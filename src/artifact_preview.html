@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word AI 助手 - 在线调试预览面板</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --color-primary: #0f6cbd;
+      --color-primary-hover: #115ea3;
+      --color-primary-light: #ebf3fc;
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-card-border: #e2e8f0;
+      --color-text-main: #1e293b;
+      --color-text-secondary: #64748b;
+      --color-text-muted: #94a3b8;
+      --color-success: #107c41;
+      --color-danger: #c42b1c;
+      --radius-md: 8px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-family);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--color-text-main);
+      background-color: var(--color-bg);
+      padding: 10px;
+    }
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .logo-badge {
+      width: 28px; height: 28px; background: var(--color-primary);
+      color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-weight: bold; font-size: 14px;
+    }
+    .model-badge {
+      font-size: 10px; background: var(--color-primary-light); color: var(--color-primary);
+      padding: 2px 6px; border-radius: 10px;
+    }
+    .btn-settings {
+      background: #f1f5f9; border: 1px solid var(--color-card-border); border-radius: 6px;
+      padding: 4px 8px; font-size: 11px; cursor: pointer; color: var(--color-text-main);
+    }
+    .btn-settings:hover { background: #e2e8f0; }
+
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px; font-size: 11px; font-weight: 600; color: var(--color-text-secondary);
+      text-transform: uppercase;
+    }
+    .selection-box {
+      background: #f8fafc; border: 1px solid #edf2f7; border-radius: 6px;
+      padding: 8px; font-size: 12px; max-height: 80px; overflow-y: auto; white-space: pre-wrap;
+    }
+    .btn-text {
+      background: none; border: none; font-size: 11px; color: var(--color-primary); cursor: pointer;
+    }
+
+    .action-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+    }
+    .action-btn {
+      display: flex; align-items: center; gap: 6px; padding: 7px 8px;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+      font-size: 12px; cursor: pointer; text-align: left;
+    }
+    .action-btn:hover { background: var(--color-primary-light); color: var(--color-primary); border-color: #cbd5e1; }
+
+    textarea {
+      width: 100%; border: 1px solid var(--color-card-border); border-radius: 6px;
+      padding: 8px; font-size: 12px; font-family: inherit; resize: vertical; outline: none;
+    }
+    textarea:focus { border-color: var(--color-primary); }
+
+    .btn-primary {
+      background: var(--color-primary); color: white; border: none; border-radius: 6px;
+      padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+
+    .result-content {
+      background: #fcfcfd; border: 1px solid #edf2f7; border-radius: 6px;
+      padding: 8px; font-size: 12px; line-height: 1.5; max-height: 160px; overflow-y: auto; white-space: pre-wrap;
+    }
+
+    /* 抽屉/模态设置 */
+    .drawer {
+      background: #ffffff; border: 1px solid var(--color-card-border); border-radius: 8px;
+      padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .form-group { margin-bottom: 8px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 3px; }
+    .form-input {
+      width: 100%; padding: 6px 8px; border: 1px solid var(--color-card-border); border-radius: 4px;
+      font-size: 12px; outline: none;
+    }
+    .form-input:focus { border-color: var(--color-primary); }
+    .test-box { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .status-text { font-size: 11px; }
+    .status-success { color: var(--color-success); font-weight: bold; }
+    .status-error { color: var(--color-danger); font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部状态栏 -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">W</div>
+      <div>
+        <div style="font-weight: 600;">Word AI 调试控制台</div>
+        <span id="currentModelBadge" class="model-badge">http://127.0.0.1:8045/v1</span>
+      </div>
+    </div>
+    <button id="btnToggleSettings" class="btn-settings">⚙️ 设置</button>
+  </header>
+
+  <!-- 设置面板 -->
+  <div id="settingsBox" class="drawer" style="display: block;">
+    <div class="card-header">
+      <span>本地 API 调试配置 (127.0.0.1:8045)</span>
+      <button id="btnCloseSettings" class="btn-text">收起</button>
+    </div>
+    <div class="form-group">
+      <label>API Base URL</label>
+      <input type="text" id="apiBaseUrl" class="form-input" value="http://127.0.0.1:8045/v1">
+    </div>
+    <div class="form-group">
+      <label>模型名称 (Model Name)</label>
+      <input type="text" id="modelName" class="form-input" placeholder="输入您在 8045 接口上加载的模型名称 (例如 qwen2.5 / deepseek)">
+    </div>
+    <div class="form-group">
+      <label>API Key (可选)</label>
+      <input type="text" id="apiKey" class="form-input" value="sk-test" placeholder="无鉴权可随意填写">
+    </div>
+    <div class="test-box">
+      <button id="btnTestConn" class="btn-primary" style="background:#0f6cbd;">测试连通性</button>
+      <span id="testResult" class="status-text"></span>
+    </div>
+  </div>
+
+  <!-- 选中文本模拟卡片 -->
+  <div class="card">
+    <div class="card-header">
+      <span>模拟文档选中文本</span>
+      <button id="btnResetText" class="btn-text">重置范例</button>
+    </div>
+    <textarea id="sampleSelection" rows="3">人工智能正在深刻重塑数字化办公体验。通过无缝结合大语言模型，现代办公软件能够高效协助用户完成文稿润色、内容扩充、多语言翻译及精简总结。</textarea>
+  </div>
+
+  <!-- 快捷 AI 处理 -->
+  <div class="card">
+    <div class="card-header">
+      <span>选中文本快捷处理</span>
+      <span id="actionStatus" style="color:var(--color-primary);font-size:11px;">就绪</span>
+    </div>
+    <div class="action-grid">
+      <button class="action-btn" data-act="✨ 润色优化">✨ 润色优化</button>
+      <button class="action-btn" data-act="📝 扩写充实">📝 扩写充实</button>
+      <button class="action-btn" data-act="💡 提炼要点">💡 提炼要点</button>
+      <button class="action-btn" data-act="🔍 语法纠错">🔍 语法纠错</button>
+      <button class="action-btn" data-act="💼 商务公文">💼 商务公文</button>
+      <button class="action-btn" data-act="🌐 翻译英文">🌐 翻译英文</button>
+    </div>
+  </div>
+
+  <!-- 自由提示词 -->
+  <div class="card">
+    <div class="card-header">
+      <span>自定义指令</span>
+    </div>
+    <textarea id="customPrompt" rows="2" placeholder="输入自定义处理要求..."></textarea>
+    <div style="margin-top:6px; text-align:right;">
+      <button id="btnSendCustom" class="btn-primary">执行指令</button>
+    </div>
+  </div>
+
+  <!-- 输出结果 -->
+  <div id="outputCard" class="card" style="display:none; border-left:3px solid var(--color-primary);">
+    <div class="card-header">
+      <span>AI 处理结果输出</span>
+      <button id="btnApply" class="btn-text" style="color:var(--color-success);font-weight:bold;">写回文档 (模拟)</button>
+    </div>
+    <div id="resultBox" class="result-content"></div>
+  </div>
+
+  <script>
+    const btnToggleSettings = document.getElementById("btnToggleSettings");
+    const settingsBox = document.getElementById("settingsBox");
+    const btnCloseSettings = document.getElementById("btnCloseSettings");
+    const btnTestConn = document.getElementById("btnTestConn");
+    const testResult = document.getElementById("testResult");
+    const sampleSelection = document.getElementById("sampleSelection");
+    const btnResetText = document.getElementById("btnResetText");
+    const actionStatus = document.getElementById("actionStatus");
+    const outputCard = document.getElementById("outputCard");
+    const resultBox = document.getElementById("resultBox");
+    const btnApply = document.getElementById("btnApply");
+
+    btnToggleSettings.onclick = () => {
+      settingsBox.style.display = settingsBox.style.display === "none" ? "block" : "none";
+    };
+    btnCloseSettings.onclick = () => { settingsBox.style.display = "none"; };
+
+    btnResetText.onclick = () => {
+      sampleSelection.value = "人工智能正在深刻重塑数字化办公体验。通过无缝结合大语言模型，现代办公软件能够高效协助用户完成文稿润色、内容扩充、多语言翻译及精简总结。";
+    };
+
+    // 连通性测试
+    btnTestConn.onclick = async () => {
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const model = document.getElementById("modelName").value.trim();
+      const key = document.getElementById("apiKey").value.trim() || "sk-test";
+
+      if (!model) {
+        testResult.className = "status-text status-error";
+        testResult.textContent = "请先填写本地模型名！";
+        return;
+      }
+
+      testResult.className = "status-text";
+      testResult.textContent = "正在请求 127.0.0.1:8045...";
+
+      try {
+        const endpoint = baseUrl.replace(/\/+$/, "") + "/chat/completions";
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + key
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [{ role: "user", content: "hi" }],
+            max_tokens: 5
+          })
+        });
+
+        if (res.ok) {
+          testResult.className = "status-text status-success";
+          testResult.textContent = "✅ 连接成功！";
+        } else {
+          const err = await res.text();
+          testResult.className = "status-text status-error";
+          testResult.textContent = "❌ 响应错误 (" + res.status + "): " + err.substring(0, 40);
+        }
+      } catch (e) {
+        testResult.className = "status-text status-error";
+        testResult.textContent = "❌ 连接失败: " + e.message;
+      }
+    };
+
+    // 动作执行
+    document.querySelectorAll(".action-btn").forEach(btn => {
+      btn.onclick = () => {
+        const act = btn.getAttribute("data-act");
+        executeAI("【" + act + "】请处理以下文本：\n" + sampleSelection.value);
+      };
+    });
+
+    document.getElementById("btnSendCustom").onclick = () => {
+      const prompt = document.getElementById("customPrompt").value.trim();
+      if (!prompt) return;
+      executeAI("指令：" + prompt + "\n参考文本：" + sampleSelection.value);
+    };
+
+    async function executeAI(promptText) {
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const model = document.getElementById("modelName").value.trim();
+      const key = document.getElementById("apiKey").value.trim() || "sk-test";
+
+      if (!model) {
+        alert("请在上方设置面板中输入您的模型名称！");
+        settingsBox.style.display = "block";
+        return;
+      }
+
+      outputCard.style.display = "block";
+      resultBox.textContent = "正在请求本地模型中...";
+      actionStatus.textContent = "生成中...";
+
+      try {
+        const endpoint = baseUrl.replace(/\/+$/, "") + "/chat/completions";
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + key
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: "system", content: "你是一位专业的文字编辑，请直接输出处理后的结果。" },
+              { role: "user", content: promptText }
+            ],
+            temperature: 0.7
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error("HTTP " + res.status + ": " + err);
+        }
+
+        const data = await res.json();
+        const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : JSON.stringify(data);
+        resultBox.textContent = reply;
+        actionStatus.textContent = "完成";
+      } catch (e) {
+        resultBox.textContent = "生成失败: " + e.message;
+        actionStatus.textContent = "失败";
+      }
+    }
+
+    btnApply.onclick = () => {
+      sampleSelection.value = resultBox.textContent;
+      alert("已将 AI 处理后的文字写回模拟文档！");
+    };
+  </script>
+</body>
+</html>

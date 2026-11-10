@@ -1,0 +1,16 @@
+# 本地 SSL 证书和密钥（敏感信息不公开）
+certs/
+*.pem
+*.crt
+*.key
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 系统与编辑器配置
+desktop.ini
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
