@@ -33,63 +33,68 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200, "OK")
         self.end_headers()
 
-    def do_POST(self):
+    def proxy_request(self, method='GET'):
         # 处理本地 API 反向代理，解决 HTTPS 页面无法直接请求 HTTP 接口的混合内容限制 (Mixed Content)
-        if self.path.startswith('/api-proxy'):
-            target_url = self.headers.get('X-Target-Url')
-            if not target_url:
-                self.send_response(400)
-                self.end_headers()
-                self.wfile.write(b'{"error": "Missing X-Target-Url header"}')
-                return
-
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_body = self.rfile.read(content_length) if content_length > 0 else None
-
-            # 构造向上游的代理请求
-            req_headers = {
-                'Content-Type': self.headers.get('Content-Type', 'application/json'),
-            }
-            if 'Authorization' in self.headers:
-                req_headers['Authorization'] = self.headers['Authorization']
-
-            try:
-                upstream_req = urllib.request.Request(
-                    target_url,
-                    data=post_body,
-                    headers=req_headers,
-                    method='POST'
-                )
-
-                with urllib.request.urlopen(upstream_req, timeout=60) as upstream_resp:
-                    self.send_response(upstream_resp.status)
-                    # 转发响应头
-                    for k, v in upstream_resp.headers.items():
-                        if k.lower() in ['content-type', 'cache-control']:
-                            self.send_header(k, v)
-                    self.end_headers()
-
-                    # 流式中继传输数据
-                    while True:
-                        chunk = upstream_resp.read(1024)
-                        if not chunk:
-                            break
-                        self.wfile.write(chunk)
-                        self.wfile.flush()
-
-            except urllib.error.HTTPError as e:
-                self.send_response(e.code)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                err_data = e.read()
-                self.wfile.write(err_data if err_data else f'{{"error": "{e.reason}"}}'.encode('utf-8'))
-            except Exception as e:
-                self.send_response(502)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(f'{{"error": "代理连接目标接口失败: {str(e)}"}}'.encode('utf-8'))
+        target_url = self.headers.get('X-Target-Url')
+        if not target_url:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b'{"error": "Missing X-Target-Url header"}')
             return
 
+        content_length = int(self.headers.get('Content-Length', 0)) if method == 'POST' else 0
+        post_body = self.rfile.read(content_length) if content_length > 0 else None
+
+        req_headers = {
+            'Content-Type': self.headers.get('Content-Type', 'application/json'),
+        }
+        if 'Authorization' in self.headers:
+            req_headers['Authorization'] = self.headers['Authorization']
+
+        try:
+            upstream_req = urllib.request.Request(
+                target_url,
+                data=post_body,
+                headers=req_headers,
+                method=method
+            )
+
+            with urllib.request.urlopen(upstream_req, timeout=60) as upstream_resp:
+                self.send_response(upstream_resp.status)
+                for k, v in upstream_resp.headers.items():
+                    if k.lower() in ['content-type', 'cache-control']:
+                        self.send_header(k, v)
+                self.end_headers()
+
+                while True:
+                    chunk = upstream_resp.read(1024)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+
+        except urllib.error.HTTPError as e:
+            self.send_response(e.code)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            err_data = e.read()
+            self.wfile.write(err_data if err_data else f'{{"error": "{e.reason}"}}'.encode('utf-8'))
+        except Exception as e:
+            self.send_response(502)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(f'{{"error": "代理连接目标接口失败: {str(e)}"}}'.encode('utf-8'))
+
+    def do_GET(self):
+        if self.path.startswith('/api-proxy'):
+            self.proxy_request(method='GET')
+            return
+        super().do_GET()
+
+    def do_POST(self):
+        if self.path.startswith('/api-proxy'):
+            self.proxy_request(method='POST')
+            return
         super().do_POST()
 
 def generate_self_signed_cert(cert_dir):

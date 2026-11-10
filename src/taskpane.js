@@ -139,7 +139,7 @@ const AppState = {
     apiKey: "sk-test",
     model: "",
     temperature: 0.7,
-    systemPrompt: "你是一位专业的 Microsoft Word 文档创作助手与资深文字编辑。请根据用户的指令直接输出高质量处理结果。支持 Markdown 排版（加粗、列表、表格、标题），无需多余寒暄。"
+    systemPrompt: "你是一位专业的 Microsoft Word 文档创作助手与资深文字编辑。请根据用户的指令直接输出高质量处理结果。支持 Markdown 排版（加粗、列表、表格、标题）。默认只输出一份最终成稿正文，严禁输出寒暄客套、解释说明或未要求的多个备选方案，确保内容可直接写回文档。"
   },
   // 历史记录与收藏
   history: [],
@@ -516,6 +516,16 @@ function initUIEventListeners() {
   document.getElementById("btnSaveSettings").onclick = saveSettingsFromDrawer;
   document.getElementById("providerPreset").onchange = (e) => applyProviderPreset(e.target.value);
   document.getElementById("btnTestConnection").onclick = testAPIConnection;
+  document.getElementById("btnFetchModels").onclick = () => fetchAvailableModels(false);
+  document.getElementById("modelSelect").onchange = (e) => {
+    document.getElementById("modelNameInput").value = e.target.value;
+  };
+  document.getElementById("btnToggleManualModel").onclick = toggleManualModelInput;
+  document.getElementById("apiUrlInput").onblur = () => {
+    if (document.getElementById("apiUrlInput").value.trim()) {
+      fetchAvailableModels(true);
+    }
+  };
   document.getElementById("btnToggleKeyVisible").onclick = () => {
     const keyInput = document.getElementById("apiKeyInput");
     const btn = document.getElementById("btnToggleKeyVisible");
@@ -561,13 +571,17 @@ function initUIEventListeners() {
     };
   }
 
-  // 多版本 Tab 点击委托
-  document.querySelectorAll(".draft-tab").forEach(tab => {
-    tab.onclick = () => {
-      const idx = parseInt(tab.getAttribute("data-index"), 10);
-      switchDraft(idx);
+  // 多版本 Tab 点击委托（事件代理，支持动态渲染的方案 Tab）
+  const draftTabsList = document.getElementById("draftTabsList");
+  if (draftTabsList) {
+    draftTabsList.onclick = (e) => {
+      const tab = e.target.closest(".draft-tab");
+      if (tab) {
+        const idx = parseInt(tab.getAttribute("data-index"), 10);
+        switchDraft(idx);
+      }
     };
-  });
+  }
 }
 
 function getCurrentActiveOutputText() {
@@ -584,12 +598,113 @@ function getCurrentActiveOutputText() {
 
 function switchDraft(index) {
   AppState.activeDraftIndex = index;
+  AppState.selectedResultText = ""; // 切换方案时重置局部划选
   document.querySelectorAll(".draft-tab").forEach(tab => {
     const i = parseInt(tab.getAttribute("data-index"), 10);
     tab.classList.toggle("active", i === index);
   });
   const currentText = AppState.drafts[index] || "";
   renderMarkdownResult(currentText);
+}
+
+function parseMultipleDrafts(cleanText) {
+  if (!cleanText) return null;
+
+  // 1. 显式标记 ===版本1:xxx===
+  const explicitDrafts = [];
+  const v1 = cleanText.match(/===版本1[^=]*===([\s\S]*?)(?:===版本2|$)/);
+  const v2 = cleanText.match(/===版本2[^=]*===([\s\S]*?)(?:===版本3|$)/);
+  const v3 = cleanText.match(/===版本3[^=]*===([\s\S]*?)$/);
+  if (v1 && v2) {
+    explicitDrafts.push({ title: "版本 1", content: v1[1].trim() });
+    explicitDrafts.push({ title: "版本 2", content: v2[1].trim() });
+    if (v3) explicitDrafts.push({ title: "版本 3", content: v3[1].trim() });
+    return explicitDrafts;
+  }
+
+  // 2. 自适应探测常见的方案/版本标记 (如 方案1/方案一/【方案一】/### 方案1/Option 1等)
+  const pattern = /(?:^|\n)(?:[#*>\s-]*)(?:【)?(?:方案|版本|Option|Draft)\s*([1-9一二三四五ABCabc])[:：\s\-—]*(.*?)(?:】|\*\*)?(?:\n|$)/gi;
+  const matches = [];
+  let m;
+  while ((m = pattern.exec(cleanText)) !== null) {
+    matches.push({
+      index: m.index,
+      fullLength: m[0].length,
+      numStr: m[1],
+      subTitle: (m[2] || "").trim()
+    });
+  }
+
+  if (matches.length >= 2) {
+    const results = [];
+    for (let i = 0; i < matches.length; i++) {
+      const cur = matches[i];
+      const startPos = cur.index + cur.fullLength;
+      const endPos = (i + 1 < matches.length) ? matches[i + 1].index : cleanText.length;
+      let body = cleanText.substring(startPos, endPos).trim();
+
+      // 清理末尾可能包含的总结寒暄废话
+      if (i === matches.length - 1) {
+        body = body.replace(/(?:\n|^)(?:以上|希望|如需|如有|若有|祝您)[\s\S]*$/, "").trim();
+      }
+
+      let tabTitle = `方案 ${cur.numStr}`;
+      if (cur.subTitle && cur.subTitle.length <= 8) {
+        tabTitle = cur.subTitle.replace(/^[（(【]+|[）)】]+$/g, "");
+      }
+
+      if (body.length > 0) {
+        results.push({
+          title: tabTitle,
+          content: body
+        });
+      }
+    }
+
+    if (results.length >= 2) {
+      return results;
+    }
+  }
+
+  return null;
+}
+
+function renderDraftTabs(draftList, fullText) {
+  const container = document.getElementById("draftTabsContainer");
+  const listEl = document.getElementById("draftTabsList");
+  if (!container || !listEl) return;
+
+  if (!draftList || draftList.length < 2) {
+    container.style.display = "none";
+    AppState.drafts = [];
+    AppState.activeDraftIndex = 0;
+    return;
+  }
+
+  AppState.drafts = draftList.map(d => d.content);
+  // 提供一个看全量的末尾 Tab
+  AppState.drafts.push(fullText);
+
+  listEl.innerHTML = "";
+  draftList.forEach((d, idx) => {
+    const btn = document.createElement("button");
+    btn.className = `draft-tab ${idx === 0 ? "active" : ""}`;
+    btn.setAttribute("data-index", idx);
+    btn.textContent = d.title;
+    btn.onclick = () => switchDraft(idx);
+    listEl.appendChild(btn);
+  });
+
+  const allBtn = document.createElement("button");
+  const allIdx = draftList.length;
+  allBtn.className = "draft-tab";
+  allBtn.setAttribute("data-index", allIdx);
+  allBtn.textContent = "完整全部";
+  allBtn.onclick = () => switchDraft(allIdx);
+  listEl.appendChild(allBtn);
+
+  container.style.display = "block";
+  switchDraft(0);
 }
 
 // ==========================================================================
@@ -846,27 +961,15 @@ function finishGeneration(rawOutput, isMultiDraft, userPrompt) {
     cleanText = rawOutput.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   }
 
-  // 多版本解析
-  if (isMultiDraft) {
-    const drafts = [];
-    const v1Match = cleanText.match(/===版本1[^=]*===([\s\S]*?)(?:===版本2|$)/);
-    const v2Match = cleanText.match(/===版本2[^=]*===([\s\S]*?)(?:===版本3|$)/);
-    const v3Match = cleanText.match(/===版本3[^=]*===([\s\S]*?)$/);
+  // 自适应多方案解析（不论是否勾选多版本，一旦检测到多个方案便自动拆分选项卡）
+  const detectedDrafts = parseMultipleDrafts(cleanText);
 
-    if (v1Match) drafts.push(v1Match[1].trim());
-    if (v2Match) drafts.push(v2Match[1].trim());
-    if (v3Match) drafts.push(v3Match[1].trim());
-
-    if (drafts.length >= 2) {
-      AppState.drafts = drafts;
-      AppState.activeDraftIndex = 0;
-      document.getElementById("draftTabsContainer").style.display = "block";
-      switchDraft(0);
-    } else {
-      AppState.lastGeneratedText = cleanText;
-      renderMarkdownResult(cleanText);
-    }
+  if (detectedDrafts && detectedDrafts.length >= 2) {
+    renderDraftTabs(detectedDrafts, cleanText);
   } else {
+    document.getElementById("draftTabsContainer").style.display = "none";
+    AppState.drafts = [];
+    AppState.activeDraftIndex = 0;
     AppState.lastGeneratedText = cleanText;
     renderMarkdownResult(cleanText);
   }
@@ -1120,35 +1223,171 @@ function openSettingsDrawer() {
   document.getElementById("providerPreset").value = AppState.config.provider || "local_custom";
   document.getElementById("apiUrlInput").value = AppState.config.baseUrl || "";
   document.getElementById("apiKeyInput").value = AppState.config.apiKey || "";
-  document.getElementById("modelNameInput").value = AppState.config.model || "";
+  
+  const currentModel = AppState.config.model || "";
+  document.getElementById("modelNameInput").value = currentModel;
+  
+  const modelSelect = document.getElementById("modelSelect");
+  modelSelect.innerHTML = currentModel 
+    ? `<option value="${currentModel}">${currentModel} (当前选中)</option>` 
+    : `<option value="">(点击刷新模型列表)</option>`;
+  modelSelect.value = currentModel;
+
   document.getElementById("temperatureSlider").value = AppState.config.temperature || 0.7;
   document.getElementById("temperatureVal").textContent = AppState.config.temperature || 0.7;
   document.getElementById("systemPromptInput").value = AppState.config.systemPrompt || "";
   document.getElementById("testConnectionStatus").textContent = "";
+  document.getElementById("modelFetchStatus").textContent = "";
 
   drawer.style.display = "flex";
+
+  // 自动尝试静默拉取可用模型列表
+  if (AppState.config.baseUrl) {
+    fetchAvailableModels(true);
+  }
 }
 
 function closeSettingsDrawer() {
   document.getElementById("settingsDrawer").style.display = "none";
 }
 
+function toggleManualModelInput() {
+  const inputEl = document.getElementById("modelNameInput");
+  const toggleBtn = document.getElementById("btnToggleManualModel");
+  const isHidden = inputEl.style.display === "none";
+  if (isHidden) {
+    inputEl.style.display = "block";
+    toggleBtn.textContent = "切换为下拉选择";
+    inputEl.focus();
+  } else {
+    inputEl.style.display = "none";
+    toggleBtn.textContent = "切换为手动输入";
+  }
+}
+
+async function fetchAvailableModels(silent = false) {
+  const baseUrl = document.getElementById("apiUrlInput").value.trim();
+  const apiKey = document.getElementById("apiKeyInput").value.trim();
+  const selectEl = document.getElementById("modelSelect");
+  const statusEl = document.getElementById("modelFetchStatus");
+
+  if (!baseUrl) {
+    if (!silent) showToast("请先填写 API Base URL！");
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = "正在拉取模型...";
+
+  const rawEndpoint = `${baseUrl.replace(/\/+$/, "")}/models`;
+  const defaultHeaders = {
+    "Authorization": `Bearer ${apiKey || "dummy-key"}`
+  };
+  const { fetchUrl, fetchHeaders } = resolveFetchEndpointAndHeaders(rawEndpoint, defaultHeaders);
+
+  try {
+    const res = await fetch(fetchUrl, {
+      method: "GET",
+      headers: fetchHeaders
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    let modelList = [];
+
+    if (Array.isArray(data)) {
+      modelList = data.map(item => (typeof item === "string" ? item : (item.id || item.name))).filter(Boolean);
+    } else if (data && Array.isArray(data.data)) {
+      modelList = data.data.map(item => (typeof item === "string" ? item : (item.id || item.name))).filter(Boolean);
+    } else if (data && Array.isArray(data.models)) {
+      modelList = data.models.map(item => (typeof item === "string" ? item : (item.name || item.id))).filter(Boolean);
+    }
+
+    if (modelList.length === 0) {
+      throw new Error("接口返回列表中无模型");
+    }
+
+    // 填充下拉选项
+    selectEl.innerHTML = "";
+    modelList.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      selectEl.appendChild(opt);
+    });
+
+    const targetModel = AppState.config.model || document.getElementById("modelNameInput").value.trim();
+    if (targetModel && modelList.includes(targetModel)) {
+      selectEl.value = targetModel;
+    } else {
+      selectEl.value = modelList[0];
+    }
+    document.getElementById("modelNameInput").value = selectEl.value;
+
+    if (statusEl) {
+      statusEl.textContent = `已获取 ${modelList.length} 个模型`;
+      setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 3000);
+    }
+    if (!silent) showToast(`成功获取到 ${modelList.length} 个可用模型！`);
+  } catch (err) {
+    console.warn("拉取模型列表失败:", err);
+    if (statusEl) statusEl.textContent = "未获取到，可手动输入";
+    if (!silent) showToast("获取模型列表失败: " + err.message);
+  }
+}
+
+function getSelectedModelName() {
+  const inputEl = document.getElementById("modelNameInput");
+  const selectEl = document.getElementById("modelSelect");
+  if (inputEl.style.display !== "none" && inputEl.value.trim()) {
+    return inputEl.value.trim();
+  }
+  if (selectEl.value) {
+    return selectEl.value;
+  }
+  return inputEl.value.trim();
+}
+
 function applyProviderPreset(providerKey) {
   const preset = PROVIDER_PRESETS[providerKey];
   if (!preset) return;
-  if (preset.baseUrl) document.getElementById("apiUrlInput").value = preset.baseUrl;
-  if (preset.model) document.getElementById("modelNameInput").value = preset.model;
+  if (preset.baseUrl) {
+    document.getElementById("apiUrlInput").value = preset.baseUrl;
+    fetchAvailableModels(true);
+  }
+  if (preset.model) {
+    document.getElementById("modelNameInput").value = preset.model;
+    const selectEl = document.getElementById("modelSelect");
+    let found = false;
+    for (let opt of selectEl.options) {
+      if (opt.value === preset.model) {
+        selectEl.value = preset.model;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      const opt = document.createElement("option");
+      opt.value = preset.model;
+      opt.textContent = preset.model;
+      selectEl.prepend(opt);
+      selectEl.value = preset.model;
+    }
+  }
 }
 
 function saveSettingsFromDrawer() {
   AppState.config.provider = document.getElementById("providerPreset").value;
   AppState.config.baseUrl = document.getElementById("apiUrlInput").value.trim();
   AppState.config.apiKey = document.getElementById("apiKeyInput").value.trim();
-  AppState.config.model = document.getElementById("modelNameInput").value.trim();
+  AppState.config.model = getSelectedModelName();
   AppState.config.temperature = parseFloat(document.getElementById("temperatureSlider").value);
   AppState.config.systemPrompt = document.getElementById("systemPromptInput").value.trim();
 
   saveConfigToStorage();
+  updateHeaderModelBadge();
   closeSettingsDrawer();
   showToast("设置已保存并生效！");
 }
@@ -1160,7 +1399,7 @@ async function testAPIConnection() {
 
   const baseUrl = document.getElementById("apiUrlInput").value.trim();
   const apiKey = document.getElementById("apiKeyInput").value.trim();
-  const model = document.getElementById("modelNameInput").value.trim();
+  const model = getSelectedModelName();
 
   if (!baseUrl) {
     statusEl.className = "test-status error";

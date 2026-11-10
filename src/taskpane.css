@@ -579,7 +579,19 @@ kbd {
 }
 
 .draft-tabs-container { margin-bottom: 10px; }
-.draft-tab { height: 26px; font-size: 11.5px; }
+.draft-tabs {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+.draft-tabs::-webkit-scrollbar { display: none; }
+.draft-tab {
+  height: 26px;
+  font-size: 11.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0 10px;
+}
 
 /* 思考过程 */
 .reasoning-panel {

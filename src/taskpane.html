@@ -348,8 +348,22 @@
           </div>
 
           <div class="form-group">
-            <label for="modelNameInput">模型名称</label>
-            <input type="text" id="modelNameInput" class="form-input" placeholder="deepseek-chat 或本地模型名">
+            <div class="label-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label for="modelSelect">模型选择</label>
+              <button id="btnFetchModels" type="button" class="btn-text-action" title="从 API 获取可用模型列表" style="background: none; border: none; color: var(--brand); font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px;">
+                <svg class="ic" width="12" height="12"><use href="#i-refresh"/></svg> 获取/刷新模型
+              </button>
+            </div>
+            <div id="modelSelectWrapper">
+              <select id="modelSelect" class="form-select">
+                <option value="">(请点击右上角获取模型或切换手动输入)</option>
+              </select>
+              <input type="text" id="modelNameInput" class="form-input" style="display:none; margin-top:6px;" placeholder="手动输入模型名，如 deepseek-chat 或 qwen2.5:7b">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <button id="btnToggleManualModel" type="button" style="background: none; border: none; color: var(--text-tertiary); font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;">切换为手动输入</button>
+              <span id="modelFetchStatus" style="font-size: 11px; color: var(--text-tertiary);"></span>
+            </div>
           </div>
 
           <div class="form-group">
