@@ -571,6 +571,11 @@ function initUIEventListeners() {
 }
 
 function getCurrentActiveOutputText() {
+  // 1. 若用户在生成结果区域划选了局部文本，优先写回划选文本
+  if (AppState.selectedResultText && AppState.selectedResultText.trim().length > 0) {
+    return AppState.selectedResultText.trim();
+  }
+  // 2. 否则按当前激活的草稿或全局文本
   if (AppState.drafts.length > 0 && AppState.drafts[AppState.activeDraftIndex]) {
     return AppState.drafts[AppState.activeDraftIndex];
   }
