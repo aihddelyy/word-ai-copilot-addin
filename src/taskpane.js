@@ -82,6 +82,10 @@ const ACTION_PROMPTS = {
   to_zh: {
     name: "翻译为中文",
     prompt: "请将以下内容准确翻译为流畅易读的中文，做到信达雅：\n\n"
+  },
+  continue_write: {
+    name: "智能往下续写",
+    prompt: "请根据以下上文语境，顺着原有的文风、逻辑脉络与核心主题，自然流畅地往下续写下一段或后续内容。注意：请直接输出新增的续写内容本身，严禁重复上文已有的句子：\n\n"
   }
 };
 
@@ -97,7 +101,7 @@ const DOC_ACTION_PROMPTS = {
   },
   doc_audit: {
     name: "全面校对审查报告",
-    prompt: "请作为资深文档主编，对整篇文档进行全方位审阅，输出一份专业的【文档审查与修改意见报告】。重点排查：1. 错别字与语病；2. 专业术语前后不统一；3. 论据或逻辑前后矛盾；4. 排版与标点规范性，并逐条给出修改建议：\n\n"
+    prompt: "请作为资深文档主编，对整篇文档进行全方位审阅，输出一份专业的【文档审查与修改意见报告】。重点排查：1. 错别字与语病；2. 专业术语前后不统一；3. 论据或逻辑前后矛盾；4. 排版与标点规范性。\n\n【重要格式要求】：在列出具体文字修改建议时，请务必使用直角引号「」标出文档中的原句片段与修改后的句子，严格采用如下格式：\n- 原文：「此处为文档中的原始句子片段」 -> 建议改为：「此处为修改后的句子」（原因说明）\n以便系统自动为用户提供一键定位与替换功能。\n\n待审阅全文如下：\n\n"
   },
   doc_table: {
     name: "整理关键数据表格",
@@ -118,8 +122,11 @@ const AppState = {
   isOfficeInitialized: false,
   activeMode: "selection", // "selection" | "document"
   currentSelection: "",
+  surroundingContext: "", // 选区所在的前后段落上下文
   fullDocText: "",
   lastGeneratedText: "",
+  lastUserPrompt: "",
+  lastActionType: "", // 记录最近执行的动作类型（如 doc_audit / continue_write 等）
   // 划选局部写回状态
   selectedResultText: "",
   // 多版本草稿状态
@@ -129,6 +136,8 @@ const AppState = {
   reasoningText: "",
   isReasoning: false,
   isReasoningCollapsed: false,
+  // 缓存的可用模型列表
+  cachedModels: [],
   // 生成控制
   abortController: null,
   isGenerating: false,
@@ -210,14 +219,92 @@ async function refreshDocumentSelection() {
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
       selection.load("text");
+      const paras = selection.paragraphs;
+      paras.load("items/text");
       await context.sync();
 
       const text = selection.text ? selection.text.trim() : "";
       AppState.currentSelection = text;
+
+      // 提取选区所在段落及前后相邻段落作为上下文语境
+      let ctxParts = [];
+      if (paras.items && paras.items.length > 0) {
+        const firstPara = paras.items[0];
+        const lastPara = paras.items[paras.items.length - 1];
+        const prevPara = firstPara.getPreviousOrNullObject();
+        const nextPara = lastPara.getNextOrNullObject();
+        prevPara.load("text");
+        nextPara.load("text");
+        await context.sync();
+
+        if (!prevPara.isNullObject && prevPara.text && prevPara.text.trim()) {
+          ctxParts.push(prevPara.text.trim());
+        }
+        paras.items.forEach(p => {
+          if (p.text && p.text.trim()) ctxParts.push(p.text.trim());
+        });
+        if (!nextPara.isNullObject && nextPara.text && nextPara.text.trim()) {
+          ctxParts.push(nextPara.text.trim());
+        }
+      }
+      AppState.surroundingContext = ctxParts.join("\n").substring(0, 1200);
       updateSelectionUI(text);
     });
   } catch (error) {
     console.error("读取选区失败:", error);
+  }
+}
+
+/**
+ * 获取光标或选区前方的上文段落（供“智能往下续写”使用）
+ */
+async function getCursorPrecedingText() {
+  if (!AppState.isOfficeInitialized) {
+    return AppState.currentSelection || AppState.fullDocText || "数字化转型正在深入推进，企业亟需构建智能化办公体系。";
+  }
+
+  try {
+    let precedingText = "";
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.load("text");
+      const paras = selection.paragraphs;
+      paras.load("items/text");
+      await context.sync();
+
+      if (selection.text && selection.text.trim().length > 20) {
+        precedingText = selection.text.trim();
+        return;
+      }
+
+      const chunks = [];
+      if (paras.items && paras.items.length > 0) {
+        const curPara = paras.items[paras.items.length - 1];
+        const p1 = curPara.getPreviousOrNullObject();
+        p1.load("text");
+        await context.sync();
+
+        if (!p1.isNullObject) {
+          const p2 = p1.getPreviousOrNullObject();
+          p2.load("text");
+          await context.sync();
+          if (!p2.isNullObject && p2.text && p2.text.trim()) {
+            chunks.push(p2.text.trim());
+          }
+          if (p1.text && p1.text.trim()) {
+            chunks.push(p1.text.trim());
+          }
+        }
+        if (curPara.text && curPara.text.trim()) {
+          chunks.push(curPara.text.trim());
+        }
+      }
+      precedingText = chunks.join("\n\n").trim();
+    });
+    return precedingText;
+  } catch (error) {
+    console.warn("获取光标上文失败:", error);
+    return AppState.currentSelection || "";
   }
 }
 
@@ -248,9 +335,9 @@ async function readFullDocumentContent() {
 }
 
 /**
- * 将 Markdown 转化为符合 Word 样式的标准 HTML
+ * 将 Markdown 转化为符合 Word 样式的标准 HTML（支持注入原文档字体与字号保真）
  */
-function markdownToWordHtml(markdownText) {
+function markdownToWordHtml(markdownText, inheritedStyle = null) {
   let rawHtml = "";
   if (window.marked) {
     rawHtml = marked.parse(markdownText);
@@ -259,15 +346,25 @@ function markdownToWordHtml(markdownText) {
   }
 
   // 为表格注入优雅的 Word 原生支持样式
-  rawHtml = rawHtml.replace(/<table>/g, '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%; border: 1px solid #94a3b8; font-family: Segoe UI, Arial, sans-serif;">');
+  const tableFont = (inheritedStyle && inheritedStyle.fontName) ? inheritedStyle.fontName : "Segoe UI, Microsoft YaHei, sans-serif";
+  rawHtml = rawHtml.replace(/<table>/g, `<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%; border: 1px solid #94a3b8; font-family: ${tableFont};">`);
   rawHtml = rawHtml.replace(/<th>/g, '<th style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #94a3b8; padding: 6px 10px;">');
   rawHtml = rawHtml.replace(/<td>/g, '<td style="border: 1px solid #94a3b8; padding: 6px 10px;">');
+
+  // 若启用了原文档字体与字号保真，包裹外层内联样式
+  if (inheritedStyle && (inheritedStyle.fontName || inheritedStyle.fontSize)) {
+    const styleParts = [];
+    if (inheritedStyle.fontName) styleParts.push(`font-family: '${inheritedStyle.fontName}', sans-serif`);
+    if (inheritedStyle.fontSize) styleParts.push(`font-size: ${inheritedStyle.fontSize}pt`);
+    if (inheritedStyle.fontColor) styleParts.push(`color: ${inheritedStyle.fontColor}`);
+    rawHtml = `<div style="${styleParts.join("; ")}">${rawHtml}</div>`;
+  }
 
   return rawHtml;
 }
 
 /**
- * 原生富文本替换选中文本
+ * 原生富文本替换选中文本（支持公文/论文原字体与缩进保真）
  */
 async function replaceSelectionWithRichText(markdownText) {
   if (!AppState.isOfficeInitialized) {
@@ -277,13 +374,58 @@ async function replaceSelectionWithRichText(markdownText) {
     return;
   }
 
+  const preserveStyle = document.getElementById("preserveFontStyleCheck")?.checked;
+
   try {
-    const wordHtml = markdownToWordHtml(markdownText);
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
-      selection.insertHtml(wordHtml, Word.InsertLocation.replace);
+      let inherited = null;
+      let paraProps = null;
+
+      if (preserveStyle) {
+        try {
+          selection.font.load("name,size,color");
+          const firstPara = selection.paragraphs.getFirstOrNullObject();
+          firstPara.load("firstLineIndent,lineSpacing,alignment");
+          await context.sync();
+
+          inherited = {
+            fontName: selection.font.name || "",
+            fontSize: selection.font.size || 0,
+            fontColor: selection.font.color || ""
+          };
+          if (!firstPara.isNullObject) {
+            paraProps = {
+              firstLineIndent: firstPara.firstLineIndent,
+              lineSpacing: firstPara.lineSpacing,
+              alignment: firstPara.alignment
+            };
+          }
+        } catch (styleErr) {
+          console.warn("读取原选区字体样式跳过:", styleErr);
+        }
+      }
+
+      const wordHtml = markdownToWordHtml(markdownText, inherited);
+      const insertedRange = selection.insertHtml(wordHtml, Word.InsertLocation.replace);
+
+      // 写回后二次加固原字体名与字号（防止 Word HTML 解析覆盖公文字体）
+      if (preserveStyle && inherited) {
+        if (inherited.fontName) insertedRange.font.name = inherited.fontName;
+        if (inherited.fontSize && inherited.fontSize > 0) insertedRange.font.size = inherited.fontSize;
+      }
+      if (preserveStyle && paraProps && !markdownText.includes("|")) {
+        const insertedParas = insertedRange.paragraphs;
+        insertedParas.load("items");
+        await context.sync();
+        insertedParas.items.forEach(p => {
+          if (typeof paraProps.firstLineIndent === "number") p.firstLineIndent = paraProps.firstLineIndent;
+          if (typeof paraProps.lineSpacing === "number" && paraProps.lineSpacing > 0) p.lineSpacing = paraProps.lineSpacing;
+        });
+      }
+
       await context.sync();
-      showToast("已按 Word 原生富文本格式替换成功！");
+      showToast(preserveStyle ? "已替换并保留原文档字体排版！" : "已按 Word 原生富文本格式替换成功！");
       refreshDocumentSelection();
     });
   } catch (error) {
@@ -363,6 +505,110 @@ async function insertAtCursorInDoc(markdownText) {
     showToast("插入失败: " + error.message);
   }
 }
+
+/**
+ * 将 AI 结果作为 Word 原生批注气泡插入 (WordApi 1.4+)
+ */
+async function insertAsWordComment(commentText) {
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已作为 Word 批注气泡插入！");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      if (typeof selection.insertComment === "function") {
+        selection.insertComment(commentText);
+        await context.sync();
+        showToast("已成功在右侧插入 Word 原生批注！");
+      } else {
+        // 兼容旧版 Word：在选区后方插入醒目批注标记
+        const fallbackRange = selection.insertText(` 【AI批注：${commentText}】`, Word.InsertLocation.after);
+        fallbackRange.font.color = "#d97706";
+        fallbackRange.font.bold = true;
+        await context.sync();
+        showToast("当前 Word 版本不支持原生气泡，已插入内联批注标记");
+      }
+    });
+  } catch (error) {
+    console.error("插入批注失败:", error);
+    showToast("插入批注失败（请确保已在文档中选中要批注的词句）");
+  }
+}
+
+/**
+ * 在 Word 正文中搜索指定片段并滚动高亮选中（供校对审查报告联动使用）
+ */
+window.locateTextInWord = async function(targetSnippet) {
+  if (!targetSnippet) return;
+  if (!AppState.isOfficeInitialized) {
+    showToast(`测试模式：已定位并高亮「${targetSnippet.substring(0, 15)}…」`);
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      // Word search API 单次搜索串长度限制在 255 字符以内
+      const query = targetSnippet.trim().substring(0, 120);
+      const results = context.document.body.search(query, { matchCase: false, ignoreSpace: true });
+      results.load("items");
+      await context.sync();
+
+      if (results.items.length > 0) {
+        results.items[0].select();
+        await context.sync();
+        showToast("📍 已在文档中定位并高亮该句！");
+      } else {
+        showToast("未能在文档中精确匹配到该原句（可能已被修改）");
+      }
+    });
+  } catch (error) {
+    console.error("定位原文失败:", error);
+    showToast("定位失败: " + error.message);
+  }
+};
+
+/**
+ * 在 Word 正文中搜索指定原句并一键替换为修改建议
+ */
+window.replaceSpecificTextInWord = async function(targetSnippet, replacementText, btnEl) {
+  if (!targetSnippet || !replacementText) return;
+  if (!AppState.isOfficeInitialized) {
+    if (btnEl) {
+      btnEl.textContent = "✅ 已修正";
+      btnEl.classList.add("done");
+    }
+    showToast(`测试模式：已将「${targetSnippet.substring(0, 10)}…」替换为「${replacementText.substring(0, 10)}…」`);
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const query = targetSnippet.trim().substring(0, 120);
+      const results = context.document.body.search(query, { matchCase: false, ignoreSpace: true });
+      results.load("items");
+      await context.sync();
+
+      if (results.items.length > 0) {
+        const targetRange = results.items[0];
+        targetRange.insertText(replacementText, Word.InsertLocation.replace);
+        targetRange.select();
+        await context.sync();
+        if (btnEl) {
+          btnEl.textContent = "✅ 已修正";
+          btnEl.classList.add("done");
+        }
+        showToast("⚡ 已成功在文档中定位并修正该处！");
+      } else {
+        showToast("未能在文档中找到该原句（可能已被修改）");
+      }
+    });
+  } catch (error) {
+    console.error("一键修正失败:", error);
+    showToast("修正失败: " + error.message);
+  }
+};
 
 // ==========================================================================
 // UI 状态与事件绑定
@@ -478,6 +724,14 @@ function initUIEventListeners() {
     if (text) insertAtCursorInDoc(text);
   };
 
+  const btnInsertComment = document.getElementById("btnInsertComment");
+  if (btnInsertComment) {
+    btnInsertComment.onclick = () => {
+      const text = getCurrentActiveOutputText();
+      if (text) insertAsWordComment(text);
+    };
+  }
+
   document.getElementById("btnCopyResult").onclick = () => {
     const text = getCurrentActiveOutputText();
     if (!text) return;
@@ -486,19 +740,76 @@ function initUIEventListeners() {
     });
   };
 
-  // 差异对比
+  // 二次微调芯片与追问输入框
+  document.querySelectorAll(".refine-chip").forEach(chip => {
+    chip.onclick = () => {
+      const refineKey = chip.getAttribute("data-refine");
+      handleRefinement(refineKey);
+    };
+  });
+  const btnRefineSubmit = document.getElementById("btnRefineSubmit");
+  const refineInput = document.getElementById("refineInput");
+  if (btnRefineSubmit && refineInput) {
+    btnRefineSubmit.onclick = () => {
+      const val = refineInput.value.trim();
+      if (val) {
+        handleRefinement(val, true);
+        refineInput.value = "";
+      } else {
+        showToast("请输入您的微调修改意见！");
+      }
+    };
+    refineInput.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnRefineSubmit.click();
+      }
+    };
+  }
+
+  // 顶部模型徽章下拉秒切
+  const modelBadgeBtn = document.getElementById("currentModelBadge");
+  if (modelBadgeBtn) {
+    modelBadgeBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleQuickModelDropdown();
+    };
+  }
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("quickModelDropdown");
+    if (dropdown && dropdown.style.display !== "none" && !dropdown.contains(e.target)) {
+      dropdown.style.display = "none";
+    }
+  });
+
+  // 差异对比（支持字词级红绿高亮合并对比 & 上下分栏对比）
   document.getElementById("btnToggleDiff").onclick = () => {
     const diffContainer = document.getElementById("diffContainer");
     const isHidden = diffContainer.style.display === "none";
     diffContainer.style.display = isHidden ? "flex" : "none";
-    document.getElementById("btnToggleDiff").textContent = isHidden ? "收起对比 (Diff)" : "查看与原文对比 (Diff)";
+    document.getElementById("btnToggleDiff").textContent = isHidden ? "收起对比 (Diff)" : "查看与原文红绿字级对比 (Diff)";
 
     if (isHidden) {
-      document.getElementById("diffOriginalText").textContent =
-        (AppState.activeMode === "selection" ? AppState.currentSelection : AppState.fullDocText) || "（无原文字）";
-      document.getElementById("diffNewText").textContent = getCurrentActiveOutputText() || "（无生成结果）";
+      refreshDiffView();
     }
   };
+
+  const btnDiffInline = document.getElementById("btnDiffModeInline");
+  const btnDiffSplit = document.getElementById("btnDiffModeSplit");
+  if (btnDiffInline && btnDiffSplit) {
+    btnDiffInline.onclick = () => {
+      btnDiffInline.classList.add("active");
+      btnDiffSplit.classList.remove("active");
+      document.getElementById("diffInlineBox").style.display = "block";
+      document.getElementById("diffSplitBox").style.display = "none";
+    };
+    btnDiffSplit.onclick = () => {
+      btnDiffSplit.classList.add("active");
+      btnDiffInline.classList.remove("active");
+      document.getElementById("diffInlineBox").style.display = "none";
+      document.getElementById("diffSplitBox").style.display = "flex";
+    };
+  }
 
   // 历史记录抽屉
   document.getElementById("btnOpenHistory").onclick = openHistoryDrawer;
@@ -584,6 +895,107 @@ function initUIEventListeners() {
   }
 }
 
+/**
+ * 计算字/词级红绿高亮 Diff 视图
+ */
+function refreshDiffView() {
+  const origText = (AppState.activeMode === "selection" ? AppState.currentSelection : AppState.fullDocText) || "";
+  const newText = getCurrentActiveOutputText() || "";
+
+  document.getElementById("diffOriginalText").textContent = origText || "（无原文字）";
+  document.getElementById("diffNewText").textContent = newText || "（无生成结果）";
+
+  const { html, addedCount, deletedCount } = computeInlineDiffHtml(origText, newText);
+  const inlineBody = document.getElementById("diffInlineBody");
+  const statsBadge = document.getElementById("diffStatsBadge");
+
+  if (inlineBody) inlineBody.innerHTML = html;
+  if (statsBadge) {
+    statsBadge.innerHTML = `<span class="diff-stat-add">+新增 ${addedCount} 字</span><span class="diff-stat-del">-删除 ${deletedCount} 字</span>`;
+  }
+}
+
+function tokenizeForDiff(str) {
+  if (!str) return [];
+  return str.match(/[\u4e00-\u9fa5]|[a-zA-Z0-9_]+|\s+|[^\s\w\u4e00-\u9fa5]/g) || [];
+}
+
+function computeInlineDiffHtml(oldStr, newStr) {
+  const oldTokens = tokenizeForDiff(oldStr);
+  const newTokens = tokenizeForDiff(newStr);
+
+  // 针对极长文本做上限保护以免 LCS 矩阵过大
+  if (oldTokens.length * newTokens.length > 400000) {
+    return {
+      html: `<del class="diff-del">${escapeHtml(oldStr)}</del>\n<ins class="diff-ins">${escapeHtml(newStr)}</ins>`,
+      addedCount: newStr.length,
+      deletedCount: oldStr.length
+    };
+  }
+
+  const m = oldTokens.length;
+  const n = newTokens.length;
+  const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      if (oldTokens[i] === newTokens[j]) {
+        dp[i][j] = dp[i + 1][j + 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+  }
+
+  let i = 0, j = 0;
+  const ops = [];
+  let addedCount = 0;
+  let deletedCount = 0;
+
+  while (i < m && j < n) {
+    if (oldTokens[i] === newTokens[j]) {
+      ops.push({ type: "eq", val: oldTokens[i] });
+      i++; j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      ops.push({ type: "del", val: oldTokens[i] });
+      deletedCount += oldTokens[i].trim().length;
+      i++;
+    } else {
+      ops.push({ type: "ins", val: newTokens[j] });
+      addedCount += newTokens[j].trim().length;
+      j++;
+    }
+  }
+  while (i < m) {
+    ops.push({ type: "del", val: oldTokens[i] });
+    deletedCount += oldTokens[i].trim().length;
+    i++;
+  }
+  while (j < n) {
+    ops.push({ type: "ins", val: newTokens[j] });
+    addedCount += newTokens[j].trim().length;
+    j++;
+  }
+
+  // 合并相邻同类标签
+  let html = "";
+  let idx = 0;
+  while (idx < ops.length) {
+    const curType = ops[idx].type;
+    let buf = "";
+    while (idx < ops.length && ops[idx].type === curType) {
+      buf += ops[idx].val;
+      idx++;
+    }
+    const escaped = escapeHtml(buf);
+    if (curType === "eq") html += escaped;
+    else if (curType === "del") html += `<del class="diff-del">${escaped}</del>`;
+    else if (curType === "ins") html += `<ins class="diff-ins">${escaped}</ins>`;
+  }
+
+  return { html: html || "（无变化）", addedCount, deletedCount };
+}
+
 function getCurrentActiveOutputText() {
   // 1. 若用户在生成结果区域划选了局部文本，优先写回划选文本
   if (AppState.selectedResultText && AppState.selectedResultText.trim().length > 0) {
@@ -605,6 +1017,9 @@ function switchDraft(index) {
   });
   const currentText = AppState.drafts[index] || "";
   renderMarkdownResult(currentText);
+  if (document.getElementById("diffContainer")?.style.display !== "none") {
+    refreshDiffView();
+  }
 }
 
 function parseMultipleDrafts(cleanText) {
@@ -736,24 +1151,81 @@ async function handleQuickAction(actionKey) {
   const action = ACTION_PROMPTS[actionKey];
   if (!action) return;
 
+  AppState.lastActionType = actionKey;
+
+  // 特权动作：智能往下续写（无需强制选中文字，自动读取光标上文）
+  if (actionKey === "continue_write") {
+    const precedingText = await getCursorPrecedingText();
+    if (!precedingText) {
+      showToast("未读取到光标前的上文内容，请先输入或选中一段文字作为引子！");
+      return;
+    }
+    const prompt = `${action.prompt}\n"""\n${precedingText}\n"""\n\n【严格输出规范】：直接输出紧接着上文往下续写的新段落正文本身，不要重复上文，严禁任何寒暄或解释说明。`;
+    runAIGeneration(prompt, "正在顺着上文智能续写...", false);
+    return;
+  }
+
   if (!AppState.currentSelection) {
     showToast("请先在 Word 文档中选中需要处理的文字！");
     return;
   }
 
+  // 构建上下文语境参考块（若开启了“感知上下文”且存在更长的前后文）
+  const isContextAware = document.getElementById("contextAwareCheck")?.checked;
+  let contextBlock = "";
+  if (isContextAware && AppState.surroundingContext && AppState.surroundingContext.length > AppState.currentSelection.length + 10) {
+    contextBlock = `\n\n【前后文语境参考（仅供理解专有名词与行文背景，请勿处理或输出此背景段落）】：\n"""\n${AppState.surroundingContext}\n"""`;
+  }
+
   const isMultiDraft = document.getElementById("multiDraftCheck").checked;
   if (isMultiDraft) {
-    const prompt = `请针对以下选中文档内容执行【${action.name}】。\n为了方便用户对比挑选，请同时生成 3 种不同风格的独立候选版本，并使用严格的分隔符分隔：\n\n===版本1:标准平衡===\n(版本1内容)\n===版本2:精简干练===\n(版本2内容)\n===版本3:文雅生动===\n(版本3内容)\n\n待处理文本：\n${AppState.currentSelection}`;
+    const prompt = `请针对以下选中文档内容执行【${action.name}】。${contextBlock}\n\n为了方便用户对比挑选，请同时生成 3 种不同风格的独立候选版本，并使用严格的分隔符分隔：\n\n===版本1:标准平衡===\n(版本1内容)\n===版本2:精简干练===\n(版本2内容)\n===版本3:文雅生动===\n(版本3内容)\n\n待处理文本：\n${AppState.currentSelection}`;
     runAIGeneration(prompt, `正在生成【${action.name}】3 个候选版本...`, true);
   } else {
-    const prompt = `${action.prompt}\n\n待处理文本：\n${AppState.currentSelection}\n\n【严格输出规范】：\n1. 仅输出最终修改后的单一一版正文结果，严禁输出方案一/方案二等多个候选方案；\n2. 严禁包含任何前缀引言、解释说明、提示语（如“修改如下：”、“好的”、“润色结果：”等）或寒暄客套；\n3. 直接输出可直接写回 Word 的纯净最终正文内容。`;
+    const prompt = `${action.prompt}\n\n待处理文本：\n${AppState.currentSelection}${contextBlock}\n\n【严格输出规范】：\n1. 仅输出针对“待处理文本”修改后的单一一版最终正文结果，严禁输出方案一/方案二等多个候选方案；\n2. 严禁包含任何前缀引言、解释说明、提示语（如“修改如下：”、“好的”、“润色结果：”等）或寒暄客套；\n3. 直接输出可直接写回 Word 的纯净最终正文内容。`;
     runAIGeneration(prompt, `正在执行【${action.name}】...`, false);
   }
+}
+
+/**
+ * 结果二次打磨与多轮追问迭代
+ */
+function handleRefinement(refineKeyOrCustomText, isCustomInput = false) {
+  if (!isCustomInput && refineKeyOrCustomText === "regenerate") {
+    if (AppState.lastUserPrompt) {
+      runAIGeneration(AppState.lastUserPrompt, "正在重新生成...", document.getElementById("multiDraftCheck")?.checked);
+    } else {
+      showToast("暂无可重新生成的任务");
+    }
+    return;
+  }
+
+  const currentResult = getCurrentActiveOutputText();
+  if (!currentResult) {
+    showToast("当前没有可微调的生成结果！");
+    return;
+  }
+
+  const presetInstructions = {
+    shorter: "在保持核心意思完整的前提下，将当前版本进一步精简压缩约 30%，删去冗余修饰，使行文更干练紧凑",
+    longer: "在当前版本基础上进一步丰富细节、论据与过渡衔接，使内容更充实饱满",
+    more_formal: "将当前版本的措辞调整得更加正式、庄重、严谨，符合高规格书面公文或专业报告规范",
+    more_casual: "将当前版本调整得更加通俗自然、平易近人、流畅易读，去除生硬的套话与官腔"
+  };
+
+  const instruction = isCustomInput ? refineKeyOrCustomText : (presetInstructions[refineKeyOrCustomText] || refineKeyOrCustomText);
+  const origRef = AppState.currentSelection ? `原始文档选区参考：\n"""\n${AppState.currentSelection}\n"""\n\n` : "";
+
+  const refinePrompt = `${origRef}当前已生成的文本版本：\n"""\n${currentResult}\n"""\n\n用户的进一步微调修改要求：【${instruction}】\n\n请基于“当前已生成的文本版本”按照上述微调要求进行针对性改写，直接输出修改后的完整最终正文，严禁输出任何解释说明、前言或寒暄。`;
+
+  runAIGeneration(refinePrompt, "正在根据要求二次微调...", false);
 }
 
 async function handleDocAction(docActionKey) {
   const action = DOC_ACTION_PROMPTS[docActionKey];
   if (!action) return;
+
+  AppState.lastActionType = docActionKey;
 
   if (!AppState.fullDocText) {
     await readFullDocumentContent();
@@ -777,6 +1249,7 @@ async function handleCustomPromptSubmit() {
     return;
   }
 
+  AppState.lastActionType = "custom";
   const includeSelection = document.getElementById("includeSelectionCheck").checked;
   let contextText = AppState.activeMode === "selection" ? AppState.currentSelection : AppState.fullDocText;
   let finalPrompt = userInstruction;
@@ -795,6 +1268,8 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
   if (AppState.isGenerating) {
     stopAIGeneration();
   }
+
+  AppState.lastUserPrompt = userPrompt;
 
   const isLocalHttp = AppState.config.baseUrl && (AppState.config.baseUrl.includes("127.0.0.1") || AppState.config.baseUrl.includes("localhost"));
   if (!AppState.config.apiKey && AppState.config.provider !== "ollama" && !isLocalHttp) {
@@ -971,7 +1446,12 @@ function finishGeneration(rawOutput, isMultiDraft, userPrompt) {
     AppState.drafts = [];
     AppState.activeDraftIndex = 0;
     AppState.lastGeneratedText = cleanText;
-    renderMarkdownResult(cleanText);
+    renderMarkdownResult(cleanText, true);
+  }
+
+  // 若 Diff 面板已展开，自动同步刷新最新对比
+  if (document.getElementById("diffContainer")?.style.display !== "none") {
+    refreshDiffView();
   }
 
   // 记录到历史记录
@@ -982,13 +1462,69 @@ function finishGeneration(rawOutput, isMultiDraft, userPrompt) {
   });
 }
 
-function renderMarkdownResult(text) {
+function renderMarkdownResult(text, isFinished = false) {
   const resultContent = document.getElementById("aiResultContent");
   if (window.marked) {
     resultContent.innerHTML = marked.parse(text);
   } else {
     resultContent.textContent = text;
   }
+
+  // 生成完成时，若包含「原句」->「修改版」校对结构，自动注入“定位原文”与“一键替换”交互按钮
+  if (isFinished || !AppState.isGenerating) {
+    enhanceAuditReportWithActions(resultContent);
+  }
+}
+
+/**
+ * 扫描审查报告中的「原句」与「修改建议」，自动挂载【📍定位原文】与【⚡一键替换】按钮
+ */
+function enhanceAuditReportWithActions(containerEl) {
+  if (!containerEl) return;
+  const items = containerEl.querySelectorAll("li, p");
+  items.forEach(el => {
+    if (el.querySelector(".audit-inline-actions")) return;
+    const text = el.textContent || "";
+    const quotes = [];
+    const regex = /「([^」]{2,150})」/g;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      quotes.push(m[1]);
+    }
+    if (quotes.length >= 1) {
+      const origSnippet = quotes[0];
+      const replacementSnippet = quotes.length >= 2 ? quotes[1] : null;
+
+      const actionSpan = document.createElement("span");
+      actionSpan.className = "audit-inline-actions";
+
+      const locateBtn = document.createElement("button");
+      locateBtn.type = "button";
+      locateBtn.className = "btn-audit-chip";
+      locateBtn.textContent = "📍 定位原文";
+      locateBtn.title = `在 Word 文档中查找并高亮：「${origSnippet}」`;
+      locateBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.locateTextInWord(origSnippet);
+      };
+      actionSpan.appendChild(locateBtn);
+
+      if (replacementSnippet && replacementSnippet !== origSnippet) {
+        const fixBtn = document.createElement("button");
+        fixBtn.type = "button";
+        fixBtn.className = "btn-audit-chip fix";
+        fixBtn.textContent = "⚡ 一键替换";
+        fixBtn.title = `将原文「${origSnippet}」直接替换为「${replacementSnippet}」`;
+        fixBtn.onclick = (e) => {
+          e.stopPropagation();
+          window.replaceSpecificTextInWord(origSnippet, replacementSnippet, fixBtn);
+        };
+        actionSpan.appendChild(fixBtn);
+      }
+
+      el.appendChild(actionSpan);
+    }
+  });
 }
 
 function stopAIGeneration() {
@@ -1212,9 +1748,99 @@ function saveConfigToStorage() {
 
 function updateHeaderModelBadge() {
   const badge = document.getElementById("currentModelBadge");
+  const badgeText = document.getElementById("currentModelBadgeText");
+  const label = AppState.config.model || "未配置模型";
+  if (badgeText) {
+    badgeText.textContent = label;
+  } else if (badge) {
+    badge.textContent = label;
+  }
   if (badge) {
-    badge.textContent = AppState.config.model || "未配置模型";
-    badge.title = `${AppState.config.baseUrl} (${AppState.config.model})`;
+    badge.title = `当前模型：${label}\n接口：${AppState.config.baseUrl}\n（点击可快速切换模型）`;
+  }
+}
+
+/**
+ * 顶部模型徽章下拉秒切菜单
+ */
+async function toggleQuickModelDropdown() {
+  const dropdown = document.getElementById("quickModelDropdown");
+  if (!dropdown) return;
+
+  if (dropdown.style.display !== "none") {
+    dropdown.style.display = "none";
+    return;
+  }
+
+  dropdown.style.display = "block";
+  dropdown.innerHTML = `<div style="padding:8px 10px; font-size:11px; color:var(--text-3);">正在加载模型列表…</div>`;
+
+  // 若尚未缓存模型列表，从当前配置的接口拉取
+  if (!AppState.cachedModels || AppState.cachedModels.length === 0) {
+    try {
+      const baseUrl = (AppState.config.baseUrl || "").trim();
+      const apiKey = (AppState.config.apiKey || "").trim();
+      if (baseUrl) {
+        const rawEndpoint = `${baseUrl.replace(/\/+$/, "")}/models`;
+        const { fetchUrl, fetchHeaders } = resolveFetchEndpointAndHeaders(rawEndpoint, {
+          "Authorization": `Bearer ${apiKey || "dummy-key"}`
+        });
+        const res = await fetch(fetchUrl, { method: "GET", headers: fetchHeaders });
+        if (res.ok) {
+          const data = await res.json();
+          let list = [];
+          if (Array.isArray(data)) list = data.map(x => typeof x === "string" ? x : (x.id || x.name)).filter(Boolean);
+          else if (data && Array.isArray(data.data)) list = data.data.map(x => typeof x === "string" ? x : (x.id || x.name)).filter(Boolean);
+          else if (data && Array.isArray(data.models)) list = data.models.map(x => typeof x === "string" ? x : (x.name || x.id)).filter(Boolean);
+          if (list.length > 0) AppState.cachedModels = list;
+        }
+      }
+    } catch (e) {
+      console.warn("顶部快捷拉取模型失败:", e);
+    }
+  }
+
+  const models = AppState.cachedModels && AppState.cachedModels.length > 0
+    ? AppState.cachedModels
+    : (AppState.config.model ? [AppState.config.model] : []);
+
+  if (models.length === 0) {
+    dropdown.innerHTML = `<button type="button" class="quick-model-item" id="btnQuickOpenSettings">⚙️ 前往设置配置接口与模型…</button>`;
+    document.getElementById("btnQuickOpenSettings").onclick = () => {
+      dropdown.style.display = "none";
+      openSettingsDrawer();
+    };
+    return;
+  }
+
+  dropdown.innerHTML = models.map(m => `
+    <button type="button" class="quick-model-item ${m === AppState.config.model ? "active" : ""}" data-model="${escapeHtml(m)}">
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(m)}</span>
+      ${m === AppState.config.model ? "<span>✓</span>" : ""}
+    </button>
+  `).join("") + `
+    <div style="border-top:1px solid var(--stroke); margin:4px 0;"></div>
+    <button type="button" class="quick-model-item" id="btnQuickRefreshModels" style="color:var(--brand); font-size:11px;">🔄 重新拉取模型列表</button>
+  `;
+
+  dropdown.querySelectorAll(".quick-model-item[data-model]").forEach(btn => {
+    btn.onclick = () => {
+      const chosen = btn.getAttribute("data-model");
+      AppState.config.model = chosen;
+      saveConfigToStorage();
+      dropdown.style.display = "none";
+      showToast(`⚡ 已切换模型为：${chosen}`);
+    };
+  });
+
+  const refreshBtn = document.getElementById("btnQuickRefreshModels");
+  if (refreshBtn) {
+    refreshBtn.onclick = async (e) => {
+      e.stopPropagation();
+      AppState.cachedModels = [];
+      dropdown.style.display = "none";
+      await toggleQuickModelDropdown();
+    };
   }
 }
 
@@ -1308,6 +1934,8 @@ async function fetchAvailableModels(silent = false) {
     if (modelList.length === 0) {
       throw new Error("接口返回列表中无模型");
     }
+
+    AppState.cachedModels = modelList;
 
     // 填充下拉选项
     selectEl.innerHTML = "";

@@ -1164,6 +1164,289 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
 .toast-notification.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* ==========================================================================
+   进阶功能样式：顶部秒切模型、智能续写、二次微调栏、红绿 Diff、校对定位
+   ========================================================================== */
+
+/* 顶部模型徽章下拉切换 */
+.model-badge-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+.model-badge.clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--t), border-color var(--t);
+}
+.model-badge.clickable:hover {
+  background: var(--brand-tint-20);
+  border-color: var(--brand-tint-30);
+}
+.quick-model-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 150;
+  min-width: 190px;
+  max-width: 250px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-8);
+}
+.quick-model-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.quick-model-item:hover {
+  background: var(--surface-hover);
+}
+.quick-model-item.active {
+  background: var(--brand-tint-10);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* 快捷处理卡片双开关与通栏智能续写 */
+.header-switches {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.action-btn.span-full {
+  grid-column: 1 / -1;
+}
+.continue-write-btn {
+  padding: 8px 10px;
+  background: linear-gradient(90deg, var(--brand-tint-10) 0%, var(--surface) 100%);
+  border-color: var(--brand-tint-30);
+}
+.continue-write-btn:hover {
+  background: var(--brand-tint-20);
+}
+.action-meta-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+.action-sub {
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+/* 结果二次微调与多轮追问栏 */
+.refinement-bar {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--stroke);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.refinement-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.refine-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.refine-chip:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-tint-10);
+}
+.refinement-input-row {
+  display: flex;
+  gap: 6px;
+}
+.refine-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--stroke-strong);
+  background: var(--surface);
+  font-size: 11.5px;
+  color: var(--text);
+}
+.refine-input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+.btn-refine-send {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.btn-refine-send:hover {
+  background: var(--brand-hover);
+}
+
+/* 保真写回选项 */
+.writeback-options-row {
+  margin-top: 8px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+
+/* 红绿字词级 Diff 视图 */
+.diff-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.diff-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.diff-stat-add {
+  color: #15803d;
+  background: #dcfce7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.diff-stat-del {
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.diff-view-switch {
+  display: inline-flex;
+  background: #ebebeb;
+  padding: 2px;
+  border-radius: var(--r-md);
+  gap: 2px;
+}
+.diff-mode-btn {
+  padding: 2px 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.diff-mode-btn.active {
+  background: var(--surface);
+  color: var(--brand);
+  font-weight: 600;
+  box-shadow: var(--shadow-2);
+}
+.inline-diff-body {
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.diff-del {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  text-decoration: line-through;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.diff-ins {
+  background-color: #dcfce7;
+  color: #15803d;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.diff-split-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 全文校对审查报告：定位原文与一键替换按钮 */
+.audit-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.btn-audit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--brand-tint-30);
+  background: var(--brand-tint-10);
+  color: var(--brand);
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.btn-audit-chip:hover {
+  background: var(--brand);
+  color: #fff;
+}
+.btn-audit-chip.fix {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #15803d;
+}
+.btn-audit-chip.fix:hover {
+  background: #16a34a;
+  color: #fff;
+}
+.btn-audit-chip.done {
+  border-color: var(--stroke);
+  background: var(--surface-2);
+  color: var(--text-3);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ==========================================================================
    窄屏与无障碍
    ========================================================================== */
 @media (max-width: 300px) {
