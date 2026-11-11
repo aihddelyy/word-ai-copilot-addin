@@ -248,7 +248,7 @@ async function refreshDocumentSelection(isAutoSync = false) {
       await context.sync();
 
       const text = selection.text ? selection.text.trim() : "";
-      
+
       // 若文字完全相同则跳过重新计算上下文，避免多余性能开销
       if (isAutoSync && text === AppState.currentSelection) {
         return;
