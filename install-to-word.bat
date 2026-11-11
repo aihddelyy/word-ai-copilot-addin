@@ -21,7 +21,7 @@ if not exist "%MANIFEST%" (
 echo [*] Closing running Word process if open...
 taskkill /f /im winword.exe >nul 2>&1
 
-echo [1/5] Cleaning Office WEF Cache...
+echo [1/4] Cleaning Office WEF Cache...
 if exist "%LOCALAPPDATA%\Microsoft\Office\16.0\Wef" (
     rd /s /q "%LOCALAPPDATA%\Microsoft\Office\16.0\Wef" >nul 2>&1
 )
@@ -29,24 +29,16 @@ if exist "%LOCALAPPDATA%\Microsoft\Office\16.0\WebServiceCache" (
     rd /s /q "%LOCALAPPDATA%\Microsoft\Office\16.0\WebServiceCache" >nul 2>&1
 )
 
-echo [2/5] Registering Developer Sideload Manifest in Registry...
+echo [2/4] Registering Developer Sideload Manifest in Registry...
 reg add "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "%ID%" /t REG_SZ /d "%MANIFEST%" /f >nul 2>&1
 
-echo [3/5] Configuring Trusted Catalogs...
+echo [3/4] Configuring Trusted Catalogs...
 reg add "HKCU\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\%CATALOG_GUID%" /v "Id" /t REG_SZ /d "%CATALOG_GUID%" /f >nul 2>&1
 reg add "HKCU\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\%CATALOG_GUID%" /v "Url" /t REG_SZ /d "\\%COMPUTERNAME%\%SHARE_NAME%" /f >nul 2>&1
 reg add "HKCU\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\%CATALOG_GUID%" /v "Flags" /t REG_DWORD /d 1 /f >nul 2>&1
 
-echo [4/5] Sharing Local Folder as Network Share...
+echo [4/4] Sharing Local Folder as Network Share...
 net share %SHARE_NAME%="%~dp0." /grant:everyone,READ >nul 2>&1
-
-echo [5/5] Checking Local Certificate...
-if exist "%~dp0certs\localhost.crt" (
-    certutil -addstore -user -f "Root" "%~dp0certs\localhost.crt" >nul 2>&1
-    echo       ^> Local certificate trusted
-) else (
-    echo       ^> Cloud-hosted mode (no local certificate required)
-)
 
 echo.
 echo ==========================================================
