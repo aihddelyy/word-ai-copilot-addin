@@ -702,15 +702,25 @@ function updateSelectionUI(text) {
   const miniBar = document.getElementById("selectionMiniBar");
 
   if (!text || text.length === 0) {
-    previewEl.textContent = "在 Word 文档中选中文字后，此处将自动同步预览...";
-    previewEl.classList.add("empty");
-    countEl.textContent = "0 字";
-    if (miniBar) miniBar.style.display = "none";
+    if (previewEl) {
+      previewEl.textContent = "在 Word 文档中选中文字后，此处将自动同步预览...";
+      previewEl.classList.add("empty");
+    }
+    if (countEl) countEl.textContent = "0 字";
+    if (miniBar) {
+      miniBar.style.display = "none";
+      miniBar.classList.remove("show");
+    }
   } else {
-    previewEl.textContent = text;
-    previewEl.classList.remove("empty");
-    countEl.textContent = `${text.length} 字`;
-    if (miniBar) miniBar.style.display = "flex";
+    if (previewEl) {
+      previewEl.textContent = text;
+      previewEl.classList.remove("empty");
+    }
+    if (countEl) countEl.textContent = `${text.length} 字`;
+    if (miniBar) {
+      miniBar.style.display = "flex";
+      miniBar.classList.add("show");
+    }
   }
 }
 
@@ -1445,7 +1455,25 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
 
     let lastDocStreamSyncTime = 0;
     const directDocStreamCheck = document.getElementById("directStreamToDocCheck");
-    const isDirectDocStream = directDocStreamCheck && directDocStreamCheck.checked && AppState.isOfficeInitialized;
+    const isDirectDocStream = directDocStreamCheck && directDocStreamCheck.checked;
+
+    // 若开启直接打字注入，提前抓取并锁定初始选区 Range
+    let targetDocBinding = null;
+    if (isDirectDocStream && AppState.isOfficeInitialized) {
+      try {
+        await Word.run(async (context) => {
+          const sel = context.document.getSelection();
+          // 用内容控件 ContentControl 或临时标记绑定选区，确保后续连续替换不随光标漂移
+          const cc = sel.insertContentControl();
+          cc.tag = "ai_stream_target";
+          cc.title = "AI 流式生成目标区";
+          await context.sync();
+          targetDocBinding = cc;
+        });
+      } catch (bindErr) {
+        console.warn("选区 ContentControl 绑定失败，回退到 Selection 替换:", bindErr);
+      }
+    }
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1529,9 +1557,25 @@ async function streamChunkDirectToWord(accumulatedRaw, isFinal = false) {
   isStreamingToWordBusy = true;
   try {
     await Word.run(async (context) => {
-      const selection = context.document.getSelection();
-      selection.insertText(textToInsert, Word.InsertLocation.replace);
+      // 1. 若创建了绑定内容控件，则直接替换其内部文本
+      const ccs = context.document.contentControls.getByTag("ai_stream_target");
+      ccs.load("items");
       await context.sync();
+
+      if (ccs.items && ccs.items.length > 0) {
+        const targetCc = ccs.items[0];
+        targetCc.insertText(textToInsert, Word.InsertLocation.replace);
+        if (isFinal) {
+          // 最终成稿时，解除内容控件包裹，保留纯正文
+          targetCc.delete(true);
+        }
+        await context.sync();
+      } else {
+        // 2. 回退模式：直接写回当前选区
+        const selection = context.document.getSelection();
+        selection.insertText(textToInsert, Word.InsertLocation.replace);
+        await context.sync();
+      }
     });
   } catch (err) {
     console.warn("流式注入 Word 失败/跳过:", err);
