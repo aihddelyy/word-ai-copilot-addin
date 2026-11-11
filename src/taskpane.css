@@ -858,27 +858,47 @@ kbd {
 /* 写回工具栏 */
 .writeback-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
   padding-top: 10px;
   border-top: 1px solid var(--stroke);
 }
 
+.writeback-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.writeback-row.main-row {
+  width: 100%;
+}
+
+.writeback-row.sub-row-1,
+.writeback-row.sub-row-2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
 .btn-action {
-  flex: 1 1 0;
-  min-width: 0;
+  width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 6px;
+  gap: 5px;
+  height: 29px;
+  padding: 0 4px;
   border: 1px solid var(--stroke-strong);
   border-radius: var(--r-md);
   background: var(--surface);
   font-size: 11.5px;
   font-weight: 500;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition: background var(--t), border-color var(--t), color var(--t);
 }
@@ -886,8 +906,8 @@ kbd {
 .btn-action:active { background: var(--surface-3); }
 
 .btn-action.primary {
-  flex: 1 1 100%;
-  height: 32px;
+  width: 100%;
+  height: 33px;
   border-color: transparent;
   background: var(--brand);
   color: #fff;
@@ -897,8 +917,6 @@ kbd {
 }
 .btn-action.primary:hover { background: var(--brand-hover); }
 .btn-action.primary:active { background: var(--brand-pressed); }
-
-.btn-action.icon-only { flex: 0 0 28px; padding: 0; }
 
 /* Diff */
 .diff-toggle-bar { margin-top: 8px; text-align: center; }

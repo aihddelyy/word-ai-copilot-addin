@@ -313,24 +313,36 @@
         </div>
 
         <div class="writeback-toolbar">
-          <button id="btnReplaceRichText" class="btn-action primary" title="按 Word 原生格式替换（保留加粗、标题、列表、表格，并支持继承原文档字体）">
-            <svg class="ic" width="14" height="14"><use href="#i-replace"/></svg>
-            替换选中（保留格式）
-          </button>
-          <button id="btnTrackChangesReview" class="btn-action highlight-btn" title="在正文原位生成红绿审阅标记（红删除线+绿底新增），供直接对比审阅">
-            <svg class="ic" width="14" height="14"><use href="#i-diff"/></svg>
-            以审阅红线插入
-          </button>
-          <button id="btnReplacePlainText" class="btn-action" title="以纯文本方式替换（100% 继承原位置格式）">纯文本替换</button>
-          <button id="btnAppendAfter" class="btn-action" title="在选中内容后插入新段落">后方追加</button>
-          <button id="btnInsertAtCursor" class="btn-action" title="在光标位置插入">光标插入</button>
-          <button id="btnInsertComment" class="btn-action" title="不修改正文，将生成结果作为 Word 右侧原生批注气泡插入">
-            <svg class="ic" width="13" height="13"><use href="#i-comment"/></svg>
-            插入批注
-          </button>
-          <button id="btnCopyResult" class="btn-action icon-only" title="复制结果" aria-label="复制结果">
-            <svg class="ic" width="14" height="14"><use href="#i-copy"/></svg>
-          </button>
+          <!-- 主操作行（全宽） -->
+          <div class="writeback-row main-row">
+            <button id="btnReplaceRichText" class="btn-action primary" title="按 Word 原生格式替换（保留加粗、标题、列表、表格，并支持继承原文档字体）">
+              <svg class="ic" width="14" height="14"><use href="#i-replace"/></svg>
+              替换选中（保留格式）
+            </button>
+          </div>
+
+          <!-- 次操作第 1 排：常用写入方式 -->
+          <div class="writeback-row sub-row-1">
+            <button id="btnTrackChangesReview" class="btn-action highlight-btn" title="在正文原位生成红绿审阅标记（红删除线+绿底新增），供直接对比审阅">
+              <svg class="ic" width="13" height="13"><use href="#i-diff"/></svg>
+              审阅红线
+            </button>
+            <button id="btnReplacePlainText" class="btn-action" title="以纯文本方式替换（100% 继承原位置格式）">纯文本替换</button>
+            <button id="btnAppendAfter" class="btn-action" title="在选中内容后插入新段落">后方追加</button>
+          </div>
+
+          <!-- 次操作第 2 排：辅助与插入模式 -->
+          <div class="writeback-row sub-row-2">
+            <button id="btnInsertAtCursor" class="btn-action" title="在光标位置插入">光标插入</button>
+            <button id="btnInsertComment" class="btn-action" title="不修改正文，将生成结果作为 Word 右侧原生批注气泡插入">
+              <svg class="ic" width="13" height="13"><use href="#i-comment"/></svg>
+              插入批注
+            </button>
+            <button id="btnCopyResult" class="btn-action copy-btn" title="复制结果到剪贴板">
+              <svg class="ic" width="13" height="13"><use href="#i-copy"/></svg>
+              复制
+            </button>
+          </div>
         </div>
 
         <div class="diff-toggle-bar">
