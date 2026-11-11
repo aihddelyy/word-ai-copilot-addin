@@ -117,6 +117,18 @@
           </div>
         </div>
         <div id="selectionPreview" class="selection-preview empty">在 Word 文档中选中文字后，此处将自动同步预览…</div>
+        
+        <!-- 选中文本悬浮迷你快捷操作条 (Mini Floating Bar) -->
+        <div id="selectionMiniBar" class="selection-mini-bar" style="display: none;">
+          <div class="mini-bar-title">快捷处理：</div>
+          <div class="mini-bar-chips">
+            <button type="button" class="mini-chip tone-blue" data-action="polish" title="对选中文本进行润色">✨ 润色</button>
+            <button type="button" class="mini-chip tone-teal" data-action="grammar" title="检查并修正错别字与语病">✓ 纠错</button>
+            <button type="button" class="mini-chip tone-condense" data-action="summarize" title="提炼精简核心内容">✂️ 精简</button>
+            <button type="button" class="mini-chip tone-violet" data-action="formal" title="调整为正式商务公文语气">🎩 公文</button>
+            <button type="button" class="mini-chip tone-amber" data-action="to_en" title="翻译为英文">🌐 译英</button>
+          </div>
+        </div>
       </section>
 
       <!-- 模式 2：全文审阅 -->
@@ -156,6 +168,11 @@
         <div class="card-header">
           <span class="card-title">快捷处理</span>
           <div class="header-switches">
+            <label class="switch" title="边思考边直接打字注入 Word 正文（流式直接替换选区）">
+              <input type="checkbox" id="directStreamToDocCheck">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label">直接注文</span>
+            </label>
             <label class="switch" title="自动携带选中句子所在的前后段落作为语境参考，让扩写和翻译更贴合上下文">
               <input type="checkbox" id="contextAwareCheck" checked>
               <span class="switch-track"><span class="switch-thumb"></span></span>

@@ -699,15 +699,18 @@ window.replaceSpecificTextInWord = async function (targetSnippet, replacementTex
 function updateSelectionUI(text) {
   const previewEl = document.getElementById("selectionPreview");
   const countEl = document.getElementById("selectionWordCount");
+  const miniBar = document.getElementById("selectionMiniBar");
 
   if (!text || text.length === 0) {
     previewEl.textContent = "在 Word 文档中选中文字后，此处将自动同步预览...";
     previewEl.classList.add("empty");
     countEl.textContent = "0 字";
+    if (miniBar) miniBar.style.display = "none";
   } else {
     previewEl.textContent = text;
     previewEl.classList.remove("empty");
     countEl.textContent = `${text.length} 字`;
+    if (miniBar) miniBar.style.display = "flex";
   }
 }
 
@@ -743,8 +746,8 @@ function initUIEventListeners() {
   document.getElementById("btnReadFullDoc").onclick = readFullDocumentContent;
   document.getElementById("btnRefreshSelection").onclick = refreshDocumentSelection;
 
-  // 选中文本快捷动作
-  document.querySelectorAll(".action-btn").forEach((btn) => {
+  // 选中文本快捷动作与迷你条芯片动作
+  document.querySelectorAll(".action-btn, .mini-chip").forEach((btn) => {
     btn.onclick = () => {
       const actionKey = btn.getAttribute("data-action");
       handleQuickAction(actionKey);
@@ -1440,6 +1443,10 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
+    let lastDocStreamSyncTime = 0;
+    const directDocStreamCheck = document.getElementById("directStreamToDocCheck");
+    const isDirectDocStream = directDocStreamCheck && directDocStreamCheck.checked && AppState.isOfficeInitialized;
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -1461,11 +1468,25 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
           if (delta) {
             accumulatedRaw += delta;
             handleStreamChunk(accumulatedRaw);
+
+            // 流式打字机直接注入 Word (带节流 120ms，避免过度高频调用 Word.run 阻塞)
+            if (isDirectDocStream) {
+              const now = Date.now();
+              if (now - lastDocStreamSyncTime > 120) {
+                lastDocStreamSyncTime = now;
+                streamChunkDirectToWord(accumulatedRaw);
+              }
+            }
           }
         } catch (e) {
           // ignore chunk parse
         }
       }
+    }
+
+    // 若开启了直接打字注入，生成结束后做一次最终完整同步
+    if (isDirectDocStream) {
+      streamChunkDirectToWord(accumulatedRaw, true);
     }
 
     // 生成完成处理
@@ -1485,6 +1506,37 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
     AppState.isGenerating = false;
     stopBtn.style.display = "none";
     resultContent.classList.remove("is-streaming");
+  }
+}
+
+/**
+ * 流式打字机直接注入 Word 正文（提取 think 后的正文流式更新到 Word 选区）
+ */
+let isStreamingToWordBusy = false;
+async function streamChunkDirectToWord(accumulatedRaw, isFinal = false) {
+  if (!AppState.isOfficeInitialized || isStreamingToWordBusy) return;
+
+  let textToInsert = accumulatedRaw;
+  if (accumulatedRaw.includes("</think>")) {
+    textToInsert = accumulatedRaw.split("</think>")[1].trim();
+  } else if (accumulatedRaw.includes("<think>")) {
+    // 仍在思考中，正文未开始输出
+    return;
+  }
+
+  if (!textToInsert) return;
+
+  isStreamingToWordBusy = true;
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.insertText(textToInsert, Word.InsertLocation.replace);
+      await context.sync();
+    });
+  } catch (err) {
+    console.warn("流式注入 Word 失败/跳过:", err);
+  } finally {
+    isStreamingToWordBusy = false;
   }
 }
 

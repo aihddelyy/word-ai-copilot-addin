@@ -1485,6 +1485,77 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   color: #991b1b !important;
 }
 
+/* 选中文本悬浮迷你快捷操作条 (Mini Floating Bar) */
+.selection-mini-bar {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--stroke);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: fadeInMiniBar 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes fadeInMiniBar {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mini-bar-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.mini-bar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--r-md);
+  border: 1px solid var(--stroke);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--t);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.mini-chip:hover {
+  background: var(--surface-3);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.mini-chip.tone-blue:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+.mini-chip.tone-teal:hover {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+.mini-chip.tone-condense:hover {
+  background: #fefce8;
+  border-color: #fef08a;
+  color: #a16207;
+}
+.mini-chip.tone-violet:hover {
+  background: #faf5ff;
+  border-color: #e9d5ff;
+  color: #7e22ce;
+}
+.mini-chip.tone-amber:hover {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
 /* 抽屉头部多按钮布局 */
 .drawer-header-actions {
   display: flex;
