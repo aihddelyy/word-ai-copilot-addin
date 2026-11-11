@@ -3,6 +3,12 @@ certs/
 *.pem
 *.crt
 *.key
+trust-cert.bat
+
+# 本地调试与反向代理相关脚本
+manifest.local.xml
+server.py
+start.bat
 
 # Python 缓存与运行临时文件
 __pycache__/
