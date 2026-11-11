@@ -874,6 +874,13 @@ function initUIEventListeners() {
     if (dropdown && dropdown.style.display !== "none" && !dropdown.contains(e.target)) {
       dropdown.style.display = "none";
     }
+    // 全局点击关闭设置抽屉里的自定义模型下拉
+    const customMenu = document.getElementById("customModelMenu");
+    const customBtn = document.getElementById("customModelSelectBtn");
+    if (customMenu && customMenu.style.display !== "none" && !customMenu.contains(e.target) && !customBtn.contains(e.target)) {
+      customMenu.style.display = "none";
+      if (customBtn) customBtn.classList.remove("active");
+    }
   });
 
   // 差异对比（支持字词级红绿高亮合并对比 & 上下分栏对比）
@@ -933,6 +940,16 @@ function initUIEventListeners() {
   document.getElementById("modelSelect").onchange = (e) => {
     document.getElementById("modelNameInput").value = e.target.value;
   };
+
+  // 自定义模型下拉按钮点击展开/收起
+  const customModelBtn = document.getElementById("customModelSelectBtn");
+  if (customModelBtn) {
+    customModelBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleCustomModelMenu();
+    };
+  }
+
   document.getElementById("btnToggleManualModel").onclick = toggleManualModelInput;
   document.getElementById("apiUrlInput").onblur = () => {
     if (document.getElementById("apiUrlInput").value.trim()) {
@@ -2096,9 +2113,11 @@ function openSettingsDrawer() {
 
   const modelSelect = document.getElementById("modelSelect");
   modelSelect.innerHTML = currentModel
-    ? `<option value="${currentModel}">${currentModel} (当前选中)</option>`
+    ? `<option value="${currentModel}">${currentModel}</option>`
     : `<option value="">(点击刷新模型列表)</option>`;
   modelSelect.value = currentModel;
+
+  updateCustomModelSelectUI(currentModel || "选择模型...");
 
   document.getElementById("temperatureSlider").value = AppState.config.temperature || 0.7;
   document.getElementById("temperatureVal").textContent = AppState.config.temperature || 0.7;
@@ -2114,20 +2133,107 @@ function openSettingsDrawer() {
   }
 }
 
+function updateCustomModelSelectUI(label) {
+  const labelEl = document.getElementById("customModelSelectLabel");
+  if (labelEl) {
+    labelEl.textContent = label || "选择模型...";
+  }
+}
+
+function toggleCustomModelMenu() {
+  const menu = document.getElementById("customModelMenu");
+  const btn = document.getElementById("customModelSelectBtn");
+  if (!menu) return;
+
+  const isHidden = menu.style.display === "none";
+  if (isHidden) {
+    renderCustomModelMenuItems();
+    menu.style.display = "block";
+    if (btn) btn.classList.add("active");
+  } else {
+    menu.style.display = "none";
+    if (btn) btn.classList.remove("active");
+  }
+}
+
+function renderCustomModelMenuItems() {
+  const menu = document.getElementById("customModelMenu");
+  if (!menu) return;
+
+  const models = AppState.cachedModels && AppState.cachedModels.length > 0
+    ? AppState.cachedModels
+    : (AppState.config.model ? [AppState.config.model] : []);
+
+  if (models.length === 0) {
+    menu.innerHTML = `<div style="padding:8px 10px; font-size:11.5px; color:var(--text-3); text-align:center;">暂无模型，请点击右上角【获取/刷新】</div>`;
+    return;
+  }
+
+  const currentVal = document.getElementById("modelNameInput").value.trim() || AppState.config.model;
+
+  menu.innerHTML = models.map(m => `
+    <button type="button" class="custom-select-item ${m === currentVal ? "active" : ""}" data-val="${escapeHtml(m)}">
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(m)}</span>
+      ${m === currentVal ? "<span style='font-weight:bold;'>✓</span>" : ""}
+    </button>
+  `).join("");
+
+  menu.querySelectorAll(".custom-select-item").forEach(item => {
+    item.onclick = (e) => {
+      e.stopPropagation();
+      const val = item.getAttribute("data-val");
+      selectCustomModel(val);
+    };
+  });
+}
+
+function selectCustomModel(val) {
+  const inputEl = document.getElementById("modelNameInput");
+  const selectEl = document.getElementById("modelSelect");
+  const menu = document.getElementById("customModelMenu");
+  const btn = document.getElementById("customModelSelectBtn");
+
+  if (inputEl) inputEl.value = val;
+  if (selectEl) {
+    let exists = false;
+    for (let opt of selectEl.options) {
+      if (opt.value === val) {
+        selectEl.value = val;
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = val;
+      selectEl.appendChild(opt);
+      selectEl.value = val;
+    }
+  }
+
+  updateCustomModelSelectUI(val);
+  if (menu) menu.style.display = "none";
+  if (btn) btn.classList.remove("active");
+}
+
 function closeSettingsDrawer() {
   document.getElementById("settingsDrawer").style.display = "none";
 }
 
 function toggleManualModelInput() {
   const inputEl = document.getElementById("modelNameInput");
+  const customWrapper = document.getElementById("customModelSelectBtn");
   const toggleBtn = document.getElementById("btnToggleManualModel");
   const isHidden = inputEl.style.display === "none";
   if (isHidden) {
     inputEl.style.display = "block";
+    if (customWrapper) customWrapper.style.display = "none";
     toggleBtn.textContent = "切换为下拉选择";
     inputEl.focus();
   } else {
     inputEl.style.display = "none";
+    if (customWrapper) customWrapper.style.display = "flex";
     toggleBtn.textContent = "切换为手动输入";
   }
 }
@@ -2194,6 +2300,7 @@ async function fetchAvailableModels(silent = false) {
       selectEl.value = modelList[0];
     }
     document.getElementById("modelNameInput").value = selectEl.value;
+    updateCustomModelSelectUI(selectEl.value);
 
     if (statusEl) {
       statusEl.textContent = `已获取 ${modelList.length} 个模型`;
@@ -2244,6 +2351,7 @@ function applyProviderPreset(providerKey) {
       selectEl.prepend(opt);
       selectEl.value = preset.model;
     }
+    updateCustomModelSelectUI(preset.model);
   }
 }
 

@@ -1050,6 +1050,92 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   background-position: right 10px center;
 }
 
+/* 自定义下拉选择组件（解决 WebView2 原生 select 异常关闭） */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+.custom-select-btn {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--stroke-strong);
+  border-bottom-color: #8a8a8a;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--t), box-shadow var(--t);
+}
+.custom-select-btn:hover {
+  border-color: #bdbdbd;
+  border-bottom-color: #616161;
+}
+.custom-select-btn.active, .custom-select-btn:focus {
+  border-color: var(--stroke-strong);
+  border-bottom-color: var(--brand);
+  box-shadow: inset 0 -1px 0 var(--brand);
+}
+.custom-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.custom-select-arrow {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: #616161;
+}
+.custom-select-btn.active .custom-select-arrow {
+  transform: rotate(180deg);
+}
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+.custom-select-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.custom-select-item:hover {
+  background: var(--surface-hover);
+}
+.custom-select-item.active {
+  background: var(--brand-tint-10);
+  color: var(--brand);
+  font-weight: 600;
+}
+
 .password-input-group { display: flex; gap: 4px; align-items: center; }
 .password-input-group .form-input { flex: 1; }
 .password-input-group .btn-subtle { height: 32px; }
