@@ -50,6 +50,7 @@
       <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
       <symbol id="i-comment" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></symbol>
       <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+      <symbol id="i-diff" viewBox="0 0 24 24"><path d="M4 6h16M4 12h8M4 18h8M16 15v6M13 18h6"/></symbol>
     </defs>
   </svg>
 
@@ -102,10 +103,15 @@
       <!-- 模式 1：选中文本 -->
       <section id="selectionSection" class="card selection-card">
         <div class="card-header">
-          <span class="card-title">选中内容</span>
+          <div class="selection-title-group" style="display:inline-flex; align-items:center; gap:6px;">
+            <span class="card-title">选中内容</span>
+            <span id="autoSyncIndicator" class="auto-sync-indicator" title="已开启自动实时感知选区">
+              <span class="auto-sync-dot"></span>实时同步
+            </span>
+          </div>
           <div class="card-meta">
             <span id="selectionWordCount" class="badge">0 字</span>
-            <button id="btnRefreshSelection" class="icon-button sm" title="重新获取选区" aria-label="重新获取选区">
+            <button id="btnRefreshSelection" class="icon-button sm" title="手动刷新选区" aria-label="手动刷新选区">
               <svg class="ic" width="14" height="14"><use href="#i-refresh"/></svg>
             </button>
           </div>
@@ -128,7 +134,7 @@
         <div class="doc-actions-list">
           <button class="doc-action-btn" data-doc-action="doc_outline">
             <span class="tile-icon tone-blue"><svg class="ic" width="16" height="16"><use href="#i-outline"/></svg></span>
-            <span class="action-meta"><strong>提炼结构大纲</strong><small>生成分级标题与章节脉络</small></span>
+            <span class="action-meta"><strong>提炼结构大纲</strong><small>生成分级标题与章节脉络（支持一键插入骨架）</small></span>
           </button>
           <button class="doc-action-btn" data-doc-action="doc_summary">
             <span class="tile-icon tone-teal"><svg class="ic" width="16" height="16"><use href="#i-pin"/></svg></span>
@@ -294,6 +300,10 @@
             <svg class="ic" width="14" height="14"><use href="#i-replace"/></svg>
             替换选中（保留格式）
           </button>
+          <button id="btnTrackChangesReview" class="btn-action highlight-btn" title="在正文原位生成红绿审阅标记（红删除线+绿底新增），供直接对比审阅">
+            <svg class="ic" width="14" height="14"><use href="#i-diff"/></svg>
+            以审阅红线插入
+          </button>
           <button id="btnReplacePlainText" class="btn-action" title="以纯文本方式替换（100% 继承原位置格式）">纯文本替换</button>
           <button id="btnAppendAfter" class="btn-action" title="在选中内容后插入新段落">后方追加</button>
           <button id="btnInsertAtCursor" class="btn-action" title="在光标位置插入">光标插入</button>
@@ -354,7 +364,12 @@
       <div class="drawer-panel">
         <div class="drawer-header">
           <h2>Prompt 收藏库</h2>
-          <button id="btnClosePrompts" class="icon-button" aria-label="关闭"><svg class="ic" width="16" height="16"><use href="#i-close"/></svg></button>
+          <div class="drawer-header-actions">
+            <button id="btnExportPrompts" class="btn-subtle" title="导出预设为 JSON 文件">导出</button>
+            <button id="btnImportPrompts" class="btn-subtle" title="从 JSON 文件导入预设">导入</button>
+            <input type="file" id="promptFileInput" accept=".json" style="display:none;">
+            <button id="btnClosePrompts" class="icon-button" aria-label="关闭"><svg class="ic" width="16" height="16"><use href="#i-close"/></svg></button>
+          </div>
         </div>
         <div class="drawer-body">
           <div class="add-prompt-box">

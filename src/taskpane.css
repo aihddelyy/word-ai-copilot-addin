@@ -1446,6 +1446,52 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   pointer-events: none;
 }
 
+/* 实时选区自动同步指示器 */
+.auto-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.auto-sync-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 1px #86efac;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* 审阅红线插入专属高亮按钮 */
+.highlight-btn {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+}
+.highlight-btn:hover {
+  background: #fee2e2 !important;
+  border-color: #f87171 !important;
+  color: #991b1b !important;
+}
+
+/* 抽屉头部多按钮布局 */
+.drawer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ==========================================================================
    窄屏与无障碍
    ========================================================================== */

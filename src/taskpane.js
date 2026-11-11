@@ -193,24 +193,48 @@ function initMockData() {
 // Word.js 文档交互（含原生富文本排版写回）
 // ==========================================================================
 
+let selectionDebounceTimer = null;
+
 async function registerSelectionChangeListener() {
   if (!AppState.isOfficeInitialized) return;
 
+  const onSelectionEvent = () => {
+    // 若用户当前不在“选中文字”模式或 AI 正在流式生成中，则不打断
+    if (AppState.activeMode !== "selection" || AppState.isGenerating) return;
+
+    if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
+    selectionDebounceTimer = setTimeout(() => {
+      refreshDocumentSelection(true);
+    }, 280);
+  };
+
   try {
-    await Word.run(async (context) => {
-      context.document.onSelectionChanged.add(() => {
-        if (AppState.activeMode === "selection") {
-          refreshDocumentSelection();
+    // 1. 优先使用 Office.EventType.DocumentSelectionChanged (最稳定、支持各版本 Word)
+    if (window.Office && Office.context && Office.context.document && Office.context.document.addHandlerAsync) {
+      Office.context.document.addHandlerAsync(
+        Office.EventType.DocumentSelectionChanged,
+        onSelectionEvent,
+        (result) => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            console.log("已成功挂载 Office.EventType.DocumentSelectionChanged 监听");
+          }
         }
-      });
-      await context.sync();
+      );
+    }
+
+    // 2. 结合 Word.run context.document.onSelectionChanged 双保险
+    await Word.run(async (context) => {
+      if (context.document.onSelectionChanged && typeof context.document.onSelectionChanged.add === "function") {
+        context.document.onSelectionChanged.add(onSelectionEvent);
+        await context.sync();
+      }
     });
   } catch (error) {
-    console.error("注册选区监听失败:", error);
+    console.warn("注册选区监听异常:", error);
   }
 }
 
-async function refreshDocumentSelection() {
+async function refreshDocumentSelection(isAutoSync = false) {
   if (!AppState.isOfficeInitialized) {
     return;
   }
@@ -224,6 +248,12 @@ async function refreshDocumentSelection() {
       await context.sync();
 
       const text = selection.text ? selection.text.trim() : "";
+      
+      // 若文字完全相同则跳过重新计算上下文，避免多余性能开销
+      if (isAutoSync && text === AppState.currentSelection) {
+        return;
+      }
+
       AppState.currentSelection = text;
 
       // 提取选区所在段落及前后相邻段落作为上下文语境
@@ -538,9 +568,61 @@ async function insertAsWordComment(commentText) {
 }
 
 /**
+ * 以审阅红线模式插入 Word 正文（红色删除线表示原句，绿色底纹表示 AI 润色新句）
+ */
+async function insertAsTrackedChanges(newText) {
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已模拟以审阅红线插入正文！");
+    return;
+  }
+
+  const oldText = AppState.currentSelection;
+  if (!oldText || oldText.trim().length === 0) {
+    showToast("请先在 Word 文档中选中需要审阅修改的原句");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.load("font/name, font/size");
+      await context.sync();
+
+      const fontName = selection.font.name || "Calibri";
+      const fontSize = selection.font.size || 12;
+
+      // 使用精密 LCS 算法计算字词级差异
+      const diffResult = computeInlineDiffHtml(oldText, newText);
+
+      // 将 LCS 生成的 del 和 ins 转换为 Word 专用的内联富文本样式
+      let reviewHtml = diffResult.html
+        .replace(/class="diff-del"/g, 'style="color:#b91c1c; background-color:#fee2e2; text-decoration:line-through; font-family:\'' + fontName + '\'; font-size:' + fontSize + 'pt;"')
+        .replace(/class="diff-ins"/g, 'style="color:#15803d; background-color:#dcfce7; text-decoration:none; font-weight:bold; font-family:\'' + fontName + '\'; font-size:' + fontSize + 'pt;"');
+
+      // 若没有直接的字词合并（例如全文重写），则输出标准红线块
+      if (!diffResult.html.includes("<del") && !diffResult.html.includes("<ins")) {
+        reviewHtml = `
+          <del style="color:#b91c1c; background-color:#fee2e2; text-decoration:line-through; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(oldText)}</del>
+          <ins style="color:#15803d; background-color:#dcfce7; text-decoration:none; font-weight:bold; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(newText)}</ins>
+        `;
+      }
+
+      const wrapperHtml = `<span style="font-family:'${fontName}'; font-size:${fontSize}pt;">${reviewHtml}</span>`;
+      selection.insertHtml(wrapperHtml, Word.InsertLocation.replace);
+      await context.sync();
+
+      showToast("已以审阅红线模式插入正文！可在 Word 中直观核对修改");
+    });
+  } catch (error) {
+    console.error("审阅红线插入失败:", error);
+    showToast("审阅插入失败: " + error.message);
+  }
+}
+
+/**
  * 在 Word 正文中搜索指定片段并滚动高亮选中（供校对审查报告联动使用）
  */
-window.locateTextInWord = async function(targetSnippet) {
+window.locateTextInWord = async function (targetSnippet) {
   if (!targetSnippet) return;
   if (!AppState.isOfficeInitialized) {
     showToast(`测试模式：已定位并高亮「${targetSnippet.substring(0, 15)}…」`);
@@ -572,7 +654,7 @@ window.locateTextInWord = async function(targetSnippet) {
 /**
  * 在 Word 正文中搜索指定原句并一键替换为修改建议
  */
-window.replaceSpecificTextInWord = async function(targetSnippet, replacementText, btnEl) {
+window.replaceSpecificTextInWord = async function (targetSnippet, replacementText, btnEl) {
   if (!targetSnippet || !replacementText) return;
   if (!AppState.isOfficeInitialized) {
     if (btnEl) {
@@ -709,6 +791,14 @@ function initUIEventListeners() {
     if (text) replaceSelectionWithRichText(text);
   };
 
+  const btnTrackChanges = document.getElementById("btnTrackChangesReview");
+  if (btnTrackChanges) {
+    btnTrackChanges.onclick = () => {
+      const text = getCurrentActiveOutputText();
+      if (text) insertAsTrackedChanges(text);
+    };
+  }
+
   document.getElementById("btnReplacePlainText").onclick = () => {
     const text = getCurrentActiveOutputText();
     if (text) replaceSelectionWithPlainText(text);
@@ -820,6 +910,14 @@ function initUIEventListeners() {
   document.getElementById("btnOpenPrompts").onclick = openPromptsDrawer;
   document.getElementById("btnClosePrompts").onclick = closePromptsDrawer;
   document.getElementById("btnAddPromptPreset").onclick = addNewPromptPreset;
+  const btnExport = document.getElementById("btnExportPrompts");
+  const btnImport = document.getElementById("btnImportPrompts");
+  const fileInput = document.getElementById("promptFileInput");
+  if (btnExport) btnExport.onclick = exportPromptsToFile;
+  if (btnImport && fileInput) {
+    btnImport.onclick = () => fileInput.click();
+    fileInput.onchange = importPromptsFromFile;
+  }
 
   // 设置抽屉
   document.getElementById("btnSettings").onclick = openSettingsDrawer;
@@ -1562,7 +1660,7 @@ function addHistoryRecord(record) {
   }
   try {
     localStorage.setItem("word_ai_copilot_history", JSON.stringify(AppState.history));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function openHistoryDrawer() {
@@ -1606,7 +1704,7 @@ function renderHistoryList() {
   `).join("");
 }
 
-window.applyHistoryItem = function(id) {
+window.applyHistoryItem = function (id) {
   const item = AppState.history.find(h => h.id === id);
   if (!item) return;
   AppState.lastGeneratedText = item.result;
@@ -1616,7 +1714,7 @@ window.applyHistoryItem = function(id) {
   showToast("已载入该条历史记录，可直接点击写回");
 };
 
-window.copyHistoryItem = function(id) {
+window.copyHistoryItem = function (id) {
   const item = AppState.history.find(h => h.id === id);
   if (!item) return;
   navigator.clipboard.writeText(item.result).then(() => {
@@ -1645,7 +1743,7 @@ function loadPromptsFromStorage() {
 function savePromptsToStorage() {
   try {
     localStorage.setItem("word_ai_copilot_prompts", JSON.stringify(AppState.promptPresets));
-  } catch (e) {}
+  } catch (e) { }
   renderPromptChips();
 }
 
@@ -1687,7 +1785,7 @@ function renderPromptsDrawerList() {
   `).join("");
 }
 
-window.selectPresetPrompt = function(id) {
+window.selectPresetPrompt = function (id) {
   const p = AppState.promptPresets.find(x => x.id === id);
   if (!p) return;
   document.getElementById("customPromptInput").value = p.content;
@@ -1695,7 +1793,7 @@ window.selectPresetPrompt = function(id) {
   document.getElementById("customPromptInput").focus();
 };
 
-window.deletePresetPrompt = function(id) {
+window.deletePresetPrompt = function (id) {
   AppState.promptPresets = AppState.promptPresets.filter(x => x.id !== id);
   savePromptsToStorage();
   renderPromptsDrawerList();
@@ -1725,6 +1823,62 @@ function addNewPromptPreset() {
   showToast("已成功添加到 Prompt 收藏库！");
 }
 
+function exportPromptsToFile() {
+  try {
+    const jsonStr = JSON.stringify(AppState.promptPresets, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `word-ai-prompts-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("预设已成功导出为 JSON 文件！");
+  } catch (e) {
+    showToast("导出失败: " + e.message);
+  }
+}
+
+function importPromptsFromFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const imported = JSON.parse(event.target.result);
+      if (Array.isArray(imported)) {
+        // 合并去重
+        let count = 0;
+        imported.forEach(item => {
+          if (item && item.title && item.content) {
+            const exists = AppState.promptPresets.some(p => p.title === item.title);
+            if (!exists) {
+              AppState.promptPresets.push({
+                id: item.id || Date.now().toString() + Math.random().toString(36).substring(2, 5),
+                title: item.title,
+                content: item.content
+              });
+              count++;
+            }
+          }
+        });
+        savePromptsToStorage();
+        renderPromptsDrawerList();
+        showToast(`成功导入 ${count} 条新预设！`);
+      } else {
+        showToast("导入失败：JSON 格式不符");
+      }
+    } catch (err) {
+      showToast("解析 JSON 失败: " + err.message);
+    }
+    e.target.value = "";
+  };
+  reader.readAsText(file);
+}
+
 // ==========================================================================
 // 设置与连通性测试
 // ==========================================================================
@@ -1735,7 +1889,7 @@ function loadConfigFromStorage() {
     if (saved) {
       AppState.config = { ...AppState.config, ...JSON.parse(saved) };
     }
-  } catch (e) {}
+  } catch (e) { }
   updateHeaderModelBadge();
 }
 
@@ -1743,7 +1897,7 @@ function saveConfigToStorage() {
   try {
     localStorage.setItem("word_ai_copilot_config", JSON.stringify(AppState.config));
     updateHeaderModelBadge();
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function updateHeaderModelBadge() {
@@ -1849,13 +2003,13 @@ function openSettingsDrawer() {
   document.getElementById("providerPreset").value = AppState.config.provider || "local_custom";
   document.getElementById("apiUrlInput").value = AppState.config.baseUrl || "";
   document.getElementById("apiKeyInput").value = AppState.config.apiKey || "";
-  
+
   const currentModel = AppState.config.model || "";
   document.getElementById("modelNameInput").value = currentModel;
-  
+
   const modelSelect = document.getElementById("modelSelect");
-  modelSelect.innerHTML = currentModel 
-    ? `<option value="${currentModel}">${currentModel} (当前选中)</option>` 
+  modelSelect.innerHTML = currentModel
+    ? `<option value="${currentModel}">${currentModel} (当前选中)</option>`
     : `<option value="">(点击刷新模型列表)</option>`;
   modelSelect.value = currentModel;
 
