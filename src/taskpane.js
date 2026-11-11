@@ -699,7 +699,6 @@ window.replaceSpecificTextInWord = async function (targetSnippet, replacementTex
 function updateSelectionUI(text) {
   const previewEl = document.getElementById("selectionPreview");
   const countEl = document.getElementById("selectionWordCount");
-  const miniBar = document.getElementById("selectionMiniBar");
 
   if (!text || text.length === 0) {
     if (previewEl) {
@@ -707,20 +706,12 @@ function updateSelectionUI(text) {
       previewEl.classList.add("empty");
     }
     if (countEl) countEl.textContent = "0 字";
-    if (miniBar) {
-      miniBar.style.display = "none";
-      miniBar.classList.remove("show");
-    }
   } else {
     if (previewEl) {
       previewEl.textContent = text;
       previewEl.classList.remove("empty");
     }
     if (countEl) countEl.textContent = `${text.length} 字`;
-    if (miniBar) {
-      miniBar.style.display = "flex";
-      miniBar.classList.add("show");
-    }
   }
 }
 
