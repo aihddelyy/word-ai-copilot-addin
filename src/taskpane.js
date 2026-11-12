@@ -778,87 +778,92 @@ async function applyDocFormat(formatType) {
   try {
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
-      const paras = selection.paragraphs;
-      paras.load("items");
+      selection.load("text, isEmpty");
       await context.sync();
 
-      if (!paras.items || paras.items.length === 0) {
-        showToast("请先在 Word 文档中划选需要排版的段落！");
+      // 严格检查是否划选了有效文字，未划选则立即提示并拦截，绝不影响未选文字或全文
+      if (selection.isEmpty || !selection.text || selection.text.trim().length === 0) {
+        showToast("请先在 Word 文档中鼠标划选需要排版的文字！");
         return;
       }
 
-      paras.items.forEach((para) => {
-        switch (formatType) {
-          case "doc_title":
-            // 公文大标题：二号（22pt）、方正小标宋简体、居中、行距30磅、无缩进
-            para.font.name = "方正小标宋简体";
-            para.font.size = 22;
-            para.font.bold = false;
-            para.font.color = "#000000";
-            para.font.highlightColor = null;
-            para.alignment = Word.Alignment.centered;
-            para.firstLineIndent = 0;
-            para.lineSpacing = 30;
-            break;
+      // 1. 字体级别格式（严格仅作用于当前划选选中的文字，绝不影响段落内其他未选中的字符）
+      switch (formatType) {
+        case "doc_title":
+          // 公文大标题：二号（22pt）、方正小标宋简体、不加粗、黑色、无高亮
+          selection.font.name = "方正小标宋简体";
+          selection.font.size = 22;
+          selection.font.bold = false;
+          selection.font.color = "#000000";
+          selection.font.highlightColor = null;
+          break;
 
-          case "h1":
-            // 一级标题：三号（16pt）、黑体、不加粗、首行缩进2字符（32pt）、行距固定28磅
-            para.font.name = "黑体";
-            para.font.size = 16;
-            para.font.bold = false;
-            para.font.color = "#000000";
-            para.font.highlightColor = null;
-            para.alignment = Word.Alignment.justified;
-            para.firstLineIndent = 32;
-            para.lineSpacing = 28;
-            break;
+        case "h1":
+          // 一级标题：三号（16pt）、黑体、不加粗、黑色、无高亮
+          selection.font.name = "黑体";
+          selection.font.size = 16;
+          selection.font.bold = false;
+          selection.font.color = "#000000";
+          selection.font.highlightColor = null;
+          break;
 
-          case "h2":
-            // 二级标题：三号（16pt）、楷体_GB2312、加粗、首行缩进2字符（32pt）、行距固定28磅
-            para.font.name = "楷体_GB2312";
-            para.font.size = 16;
-            para.font.bold = true;
-            para.font.color = "#000000";
-            para.font.highlightColor = null;
-            para.alignment = Word.Alignment.justified;
-            para.firstLineIndent = 32;
-            para.lineSpacing = 28;
-            break;
+        case "h2":
+          // 二级标题：三号（16pt）、楷体_GB2312、加粗、黑色、无高亮
+          selection.font.name = "楷体_GB2312";
+          selection.font.size = 16;
+          selection.font.bold = true;
+          selection.font.color = "#000000";
+          selection.font.highlightColor = null;
+          break;
 
-          case "h3":
-            // 三级标题：三号（16pt）、仿宋_GB2312、加粗、首行缩进2字符（32pt）、行距固定28磅
-            para.font.name = "仿宋_GB2312";
-            para.font.size = 16;
-            para.font.bold = true;
-            para.font.color = "#000000";
-            para.font.highlightColor = null;
-            para.alignment = Word.Alignment.justified;
-            para.firstLineIndent = 32;
-            para.lineSpacing = 28;
-            break;
+        case "h3":
+          // 三级标题：三号（16pt）、仿宋_GB2312、加粗、黑色、无高亮
+          selection.font.name = "仿宋_GB2312";
+          selection.font.size = 16;
+          selection.font.bold = true;
+          selection.font.color = "#000000";
+          selection.font.highlightColor = null;
+          break;
 
-          case "body":
-            // 公文正文：三号（16pt）、仿宋_GB2312、不加粗、首行缩进2字符（32pt）、行距固定28磅、两端对齐
-            para.font.name = "仿宋_GB2312";
-            para.font.size = 16;
-            para.font.bold = false;
-            para.font.color = "#000000";
-            para.font.highlightColor = null;
-            para.alignment = Word.Alignment.justified;
-            para.firstLineIndent = 32;
-            para.lineSpacing = 28;
-            break;
+        case "body":
+          // 公文正文：三号（16pt）、仿宋_GB2312、不加粗、黑色、无高亮
+          selection.font.name = "仿宋_GB2312";
+          selection.font.size = 16;
+          selection.font.bold = false;
+          selection.font.color = "#000000";
+          selection.font.highlightColor = null;
+          break;
 
-          case "clean":
-            // 格式清洗：清除异常高亮底色、重置文字颜色为黑、清除加粗与下划线、两端对齐
-            para.font.highlightColor = null;
-            para.font.color = "#000000";
-            para.font.underline = Word.UnderlineType.none;
-            para.font.strikeThrough = false;
-            para.alignment = Word.Alignment.justified;
-            break;
+        case "clean":
+          // 格式清洗：清除划选文字的底色、重置文字颜色为黑、清除加粗、下划线与删除线
+          selection.font.highlightColor = null;
+          selection.font.color = "#000000";
+          selection.font.underline = Word.UnderlineType.none;
+          selection.font.strikeThrough = false;
+          selection.font.bold = false;
+          break;
+      }
+
+      // 2. 段落级别排版（仅在标题/正文排版时应用到选区覆盖的段落，格式清洗时不更改段落属性）
+      if (formatType !== "clean") {
+        const paras = selection.paragraphs;
+        paras.load("items");
+        await context.sync();
+
+        if (paras.items && paras.items.length > 0) {
+          paras.items.forEach((para) => {
+            if (formatType === "doc_title") {
+              para.alignment = Word.Alignment.centered;
+              para.firstLineIndent = 0;
+              para.lineSpacing = 30;
+            } else if (formatType === "body" || formatType === "h1" || formatType === "h2" || formatType === "h3") {
+              para.alignment = Word.Alignment.justified;
+              para.firstLineIndent = 32;
+              para.lineSpacing = 28;
+            }
+          });
         }
-      });
+      }
 
       await context.sync();
 
@@ -868,9 +873,9 @@ async function applyDocFormat(formatType) {
         h2: "二级标题（三号楷体·加粗缩进）",
         h3: "三级标题（三号仿宋·加粗缩进）",
         body: "公文正文（三号仿宋·固定28磅）",
-        clean: "格式清洗完成（已清空异常底色与修饰）"
+        clean: "格式清洗完成（已清除选中文字异常底色与修饰）"
       };
-      showToast(`已应用：${labelMap[formatType] || formatType}`);
+      showToast(`已应用到选中文字：${labelMap[formatType] || formatType}`);
     });
   } catch (err) {
     console.error("公文排版执行失败:", err);
