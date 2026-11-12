@@ -627,11 +627,11 @@ async function insertAsTrackedChanges(newText) {
 }
 
 /**
- * 以逐段对照模式插入 Word 正文（一段对一段：原段落红色删除线，新段落绿色新增，纯划线无底色）
+ * 以 Word 审阅方式逐段对照插入 Word 正文（一段对一段：原段落使用 <del> 红色删除线，新段落使用 <ins> 绿色下划线，纯划线无底色）
  */
 async function insertAsParagraphDiff(newText) {
   if (!AppState.isOfficeInitialized) {
-    showToast("测试模式：已模拟以段落对照模式插入正文！");
+    showToast("测试模式：已模拟以 Word 审阅逐段对照插入正文！");
     return;
   }
 
@@ -660,16 +660,16 @@ async function insertAsParagraphDiff(newText) {
       for (let i = 0; i < maxCount; i++) {
         if (i < oldParas.length) {
           htmlBlocks.push(`
-            <p style="color:#c00000; text-decoration:line-through; line-height:1.6; margin:0 0 4pt 0; font-family:'${fontName}'; font-size:${fontSize}pt;">
-              ${escapeHtml(oldParas[i])}
+            <p style="line-height:1.6; margin:0 0 4pt 0; font-family:'${fontName}'; font-size:${fontSize}pt;">
+              <del style="color:#c00000; text-decoration:line-through; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(oldParas[i])}</del>
             </p>
           `);
         }
         if (i < newParas.length) {
           const formattedPara = escapeHtml(newParas[i]).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
           htmlBlocks.push(`
-            <p style="color:#008000; text-decoration:none; font-weight:normal; line-height:1.6; margin:0 0 10pt 0; font-family:'${fontName}'; font-size:${fontSize}pt;">
-              ${formattedPara}
+            <p style="line-height:1.6; margin:0 0 10pt 0; font-family:'${fontName}'; font-size:${fontSize}pt;">
+              <ins style="color:#008000; text-decoration:underline; font-weight:500; font-family:'${fontName}'; font-size:${fontSize}pt;">${formattedPara}</ins>
             </p>
           `);
         }
@@ -679,7 +679,7 @@ async function insertAsParagraphDiff(newText) {
       selection.insertHtml(finalHtml, Word.InsertLocation.replace);
       await context.sync();
 
-      showToast("已以段落对照(逐段)模式插入正文！可在 Word 中逐段核对修改");
+      showToast("已以 Word 审阅方式(逐段)插入正文！可在 Word 中逐段核对修改");
     });
   } catch (error) {
     console.error("逐段对照插入失败:", error);

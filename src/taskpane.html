@@ -12,7 +12,7 @@
   <!-- Markdown 解析库 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="taskpane.css?v=20261112_0837">
+  <link rel="stylesheet" href="taskpane.css?v=20261112_0843">
 </head>
 
 <body class="fluent-theme">
@@ -455,22 +455,22 @@
             </button>
           </div>
 
-          <!-- 次操作第 1 排：红绿审阅对照 (逐字内联 / 逐段对照) -->
+          <!-- 次操作第 1 排：Word 审阅对照 (逐字审阅 / 逐段审阅) -->
           <div class="writeback-row sub-row-1"
             style="display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; width: 100% !important;">
             <button id="btnTrackChangesReview" class="btn-action highlight-btn"
-              title="在正文原位生成逐字红绿划线标记（红色删除线+绿色新增，无底色）">
+              title="Word 逐字审阅：在正文原位生成逐字红绿划线标记（红色删除线+绿色下划线，无底色）">
               <svg class="ic" width="13" height="13">
                 <use href="#i-diff" />
               </svg>
               审阅红线(逐字)
             </button>
             <button id="btnParagraphDiffReview" class="btn-action highlight-btn"
-              title="在正文原位逐段对照输出：一段对一段，原段落红色删除线+新段落绿色新增（无底色）">
+              title="Word 逐段审阅：一段对一段输出，原段落红色删除线+新段落绿色下划线（纯划线无底色）">
               <svg class="ic" width="13" height="13">
                 <use href="#i-diff" />
               </svg>
-              段落对照(逐段)
+              段落审阅(逐段)
             </button>
           </div>
 
@@ -677,7 +677,7 @@
     <div id="toastMessage" class="toast-notification" role="status"></div>
   </div>
 
-  <script src="taskpane.js?v=20261112_0837"></script>
+  <script src="taskpane.js?v=20261112_0843"></script>
 </body>
 
 </html>
