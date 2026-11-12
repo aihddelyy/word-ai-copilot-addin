@@ -956,17 +956,22 @@ kbd {
   justify-content: flex-end;
   background: rgba(0,0,0,.28);
   animation: fade .16s var(--ease);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
 .drawer-panel {
-  width: min(340px, 94vw);
+  width: 100%;
+  max-width: 360px;
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   box-shadow: var(--shadow-8);
   animation: slideIn .22s var(--ease);
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 @keyframes slideIn { from { transform: translateX(24px); opacity: .4; } to { transform: none; opacity: 1; } }
 
@@ -1420,7 +1425,9 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
 .header-switches {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 10px;
 }
 .action-btn.span-full {
   grid-column: 1 / -1;
@@ -2097,30 +2104,33 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
    专属金句语料库与标杆文风抽屉 (Corpus Drawer)
    ========================================================================== */
 .drawer-panel.wide {
-  max-width: 420px;
+  width: 100%;
+  max-width: 400px;
 }
 .corpus-tab-bar {
   display: flex;
   border-bottom: 1px solid var(--stroke);
-  padding: 0 12px;
+  padding: 0 10px;
   background: var(--surface);
-  gap: 8px;
+  gap: 6px;
+  box-sizing: border-box;
 }
 .corpus-tab {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   padding: 8px 0;
   border: none;
   background: transparent;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all var(--t);
+  white-space: nowrap;
 }
 .corpus-tab:hover {
   color: var(--brand);
@@ -2134,6 +2144,8 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .corpus-toolbar {
   display: flex;
@@ -2146,14 +2158,15 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   gap: 4px;
 }
 .category-chip {
-  padding: 3px 8px;
-  font-size: 11px;
+  padding: 3px 7px;
+  font-size: 10.5px;
   border-radius: 999px;
   border: 1px solid var(--stroke);
   background: var(--surface);
   color: var(--text-2);
   cursor: pointer;
   transition: all var(--t);
+  white-space: nowrap;
 }
 .category-chip:hover {
   border-color: var(--brand);
@@ -2173,12 +2186,40 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
 }
 .corpus-input-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.corpus-cat-select-wrap {
+  flex: 1 1 100px;
+  min-width: 90px;
+}
+.corpus-cat-select-wrap select {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 11.5px;
+  padding: 3px 6px;
+}
+.corpus-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+.corpus-action-btns button {
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 3px 7px;
 }
 .corpus-quotes-list {
   display: flex;
@@ -2186,7 +2227,8 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   gap: 8px;
   max-height: 400px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 2px;
+  box-sizing: border-box;
 }
 .quote-item-card {
   background: var(--surface);
@@ -2197,6 +2239,8 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   flex-direction: column;
   gap: 6px;
   transition: all var(--t);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .quote-item-card:hover {
   border-color: var(--brand);
@@ -2212,6 +2256,8 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 .quote-badge {
   font-size: 10px;
@@ -2262,14 +2308,25 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
 }
 
 /* ==========================================================================
-   窄屏与无障碍
+   窄屏与无障碍自适应
    ========================================================================== */
-
-/* ==========================================================================
-   窄屏与无障碍
-   ========================================================================== */
-@media (max-width: 300px) {
+@media (max-width: 320px) {
+  .drawer-panel, .drawer-panel.wide {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .drawer-body {
+    padding: 10px 8px !important;
+  }
+  .corpus-cat-select-wrap {
+    flex: 1 1 100% !important;
+  }
+  .corpus-action-btns {
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
   .action-grid { grid-template-columns: 1fr; }
+  .formatting-grid { grid-template-columns: 1fr; }
   .kbd-hint { display: none; }
 }
 

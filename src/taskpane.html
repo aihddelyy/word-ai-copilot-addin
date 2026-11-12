@@ -872,22 +872,26 @@
                   placeholder="输入金句/精美词组，或从 Word 划选一键导入…"></textarea>
               </div>
               <div class="corpus-input-actions">
-                <select id="newCorpusCatSelect" class="form-select sm" style="width: auto;">
-                  <option value="gov">体制公文对仗</option>
-                  <option value="edu">学术论述经典</option>
-                  <option value="biz">商业汇报精粹</option>
-                  <option value="custom" selected>我的收藏</option>
-                </select>
-                <button type="button" id="btnAddCorpusFromSelection" class="btn-subtle" title="将 Word 当前划选的文字直接添加进素材库">
-                  <svg class="ic" width="12" height="12">
-                    <use href="#i-cursor" />
-                  </svg> 导入选中文字
-                </button>
-                <button type="button" id="btnAddCorpusItem" class="btn-secondary sm">
-                  <svg class="ic" width="12" height="12">
-                    <use href="#i-plus" />
-                  </svg> 添加素材
-                </button>
+                <div class="corpus-cat-select-wrap">
+                  <select id="newCorpusCatSelect" class="form-select sm">
+                    <option value="gov">体制公文对仗</option>
+                    <option value="edu">学术论述经典</option>
+                    <option value="biz">商业汇报精粹</option>
+                    <option value="custom" selected>我的收藏</option>
+                  </select>
+                </div>
+                <div class="corpus-action-btns">
+                  <button type="button" id="btnAddCorpusFromSelection" class="btn-subtle" title="将 Word 当前划选的文字直接添加进素材库">
+                    <svg class="ic" width="12" height="12">
+                      <use href="#i-cursor" />
+                    </svg> 导入选中文字
+                  </button>
+                  <button type="button" id="btnAddCorpusItem" class="btn-secondary sm">
+                    <svg class="ic" width="12" height="12">
+                      <use href="#i-plus" />
+                    </svg> 添加素材
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1032,7 +1036,7 @@
     <div id="toastMessage" class="toast-notification" role="status"></div>
   </div>
 
-  <script src="taskpane.js?v=20261112_1120"></script>
+  <script src="taskpane.js?v=20261112_1136"></script>
 </body>
 
 </html>
