@@ -12,7 +12,7 @@
   <!-- Markdown 解析库 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="taskpane.css?v=20261112_0856">
+  <link rel="stylesheet" href="taskpane.css?v=20261112_0955">
 </head>
 
 <body class="fluent-theme">
@@ -352,6 +352,55 @@
         </div>
       </section>
 
+      <!-- 独立公文规范排版工具箱 -->
+      <section id="docFormattingSection" class="card doc-formatting-card">
+        <div class="card-header" id="formattingHeader" style="cursor: pointer;" title="点击展开/收起公文排版工具">
+          <div class="card-title-group" style="display: flex; align-items: center; gap: 6px;">
+            <span class="card-title">公文规范排版</span>
+            <span class="badge">体制内规范</span>
+          </div>
+          <button type="button" class="icon-button" id="formattingToggleBtn" aria-label="收起/展开">
+            <svg class="ic" width="14" height="14">
+              <use href="#i-chevron" />
+            </svg>
+          </button>
+        </div>
+        <div id="formattingBody" class="formatting-body">
+          <div class="formatting-grid">
+            <button class="format-btn" data-format="doc_title" title="方正小标宋二号居中，单倍行距，无缩进">
+              <span class="format-tag">标题</span>
+              <span class="format-name">大标题</span>
+              <small>二号小标宋·居中</small>
+            </button>
+            <button class="format-btn" data-format="h1" title="黑体三号，首行缩进 2 字符，行距固定 28 磅">
+              <span class="format-tag">一、</span>
+              <span class="format-name">一级标题</span>
+              <small>三号黑体·缩进2字</small>
+            </button>
+            <button class="format-btn" data-format="h2" title="楷体加粗三号，首行缩进 2 字符，行距固定 28 磅">
+              <span class="format-tag">（一）</span>
+              <span class="format-name">二级标题</span>
+              <small>三号楷体·加粗缩进</small>
+            </button>
+            <button class="format-btn" data-format="h3" title="仿宋加粗三号，首行缩进 2 字符，行距固定 28 磅">
+              <span class="format-tag">1.</span>
+              <span class="format-name">三级标题</span>
+              <small>三号仿宋·加粗缩进</small>
+            </button>
+            <button class="format-btn primary-format" data-format="body" title="仿宋三号，固定值 28 磅行距，首行缩进 2 字符，两端对齐">
+              <span class="format-tag">正文</span>
+              <span class="format-name">公文正文</span>
+              <small>三号仿宋·固定28磅</small>
+            </button>
+            <button class="format-btn clean-format" data-format="clean" title="清除选中区域的异常底色、合并多余空行、软回车换硬回车">
+              <span class="format-tag">清洗</span>
+              <span class="format-name">格式清洗</span>
+              <small>清底色·合空行</small>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- 自定义指令 -->
       <section class="card prompt-card">
         <div class="card-header">
@@ -472,6 +521,47 @@
               </svg>
               段落审阅(逐段)
             </button>
+          </div>
+
+          <!-- 审阅定稿控制台：逐处微观复核 (选项 C) + 全局一键定稿 (选项 A) -->
+          <div id="reviewSessionPanel" class="review-session-panel" style="display: none;">
+            <div class="review-panel-header">
+              <span class="review-panel-title">
+                <svg class="ic" width="13" height="13"><use href="#i-diff" /></svg>
+                审阅定稿控制台
+              </span>
+              <span id="reviewCountBadge" class="badge">共 0 处修改</span>
+            </div>
+
+            <!-- 逐处微观导航 (选项 C) -->
+            <div class="review-nav-box">
+              <div class="review-nav-controls">
+                <button type="button" id="btnReviewPrev" class="btn-subtle" title="在 Word 中定位上一处修改">
+                  <svg class="ic" width="11" height="11"><use href="#i-chevron" /></svg> 上一处
+                </button>
+                <span id="reviewItemIndex" class="review-item-index">第 1/1 处</span>
+                <button type="button" id="btnReviewNext" class="btn-subtle" title="在 Word 中定位下一处修改">
+                  下一处 <svg class="ic" width="11" height="11"><use href="#i-chevron" /></svg>
+                </button>
+              </div>
+              <div id="reviewItemSnippet" class="review-item-snippet"></div>
+              <div class="review-item-actions">
+                <button type="button" id="btnAcceptCurrentItem" class="btn-action-small success" title="采纳此项：保留新修改，消除对应红删除线">采纳本处</button>
+                <button type="button" id="btnRejectCurrentItem" class="btn-action-small danger" title="保留原句：清除对应新增句，恢复原句">保留原句</button>
+              </div>
+            </div>
+
+            <!-- 全局一键定稿与撤销 (选项 A) -->
+            <div class="review-global-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px;">
+              <button type="button" id="btnAcceptAllReviews" class="btn-action success" title="一键全部采纳：清除所有红线删除标记，正文正式交付定稿">
+                <svg class="ic" width="13" height="13"><use href="#i-check" /></svg>
+                全部采纳定稿
+              </button>
+              <button type="button" id="btnRejectAllReviews" class="btn-action danger" title="一键全部撤销：剔除所有新增修改，恢复初始原始正文">
+                <svg class="ic" width="13" height="13"><use href="#i-refresh" /></svg>
+                全部撤销恢复
+              </button>
+            </div>
           </div>
 
           <!-- 次操作第 2 排：常规替换与追加 -->
@@ -677,7 +767,7 @@
     <div id="toastMessage" class="toast-notification" role="status"></div>
   </div>
 
-  <script src="taskpane.js?v=20261112_0856"></script>
+  <script src="taskpane.js?v=20261112_0955"></script>
 </body>
 
 </html>

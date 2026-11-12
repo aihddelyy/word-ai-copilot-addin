@@ -159,7 +159,8 @@ const AppState = {
   // 历史记录与收藏
   history: [],
   promptPresets: [],
-  editingPresetId: null
+  editingPresetId: null,
+  reviewSession: null
 };
 
 // ==========================================================================
@@ -619,6 +620,7 @@ async function insertAsTrackedChanges(newText) {
       await context.sync();
 
       showToast("已以审阅红线(逐字)模式插入正文！可在 Word 中直观核对修改");
+      initReviewSession(oldText, newText, false);
     });
   } catch (error) {
     console.error("审阅红线插入失败:", error);
@@ -632,6 +634,7 @@ async function insertAsTrackedChanges(newText) {
 async function insertAsParagraphDiff(newText) {
   if (!AppState.isOfficeInitialized) {
     showToast("测试模式：已模拟以 Word 审阅逐段对照插入正文！");
+    initReviewSession(AppState.currentSelection || "测试原文字", newText, true);
     return;
   }
 
@@ -680,6 +683,7 @@ async function insertAsParagraphDiff(newText) {
       await context.sync();
 
       showToast("已以 Word 审阅方式(逐段)插入正文！可在 Word 中逐段核对修改");
+      initReviewSession(oldText, newText, true);
     });
   } catch (error) {
     console.error("逐段对照插入失败:", error);
@@ -759,6 +763,396 @@ window.replaceSpecificTextInWord = async function (targetSnippet, replacementTex
     showToast("修正失败: " + error.message);
   }
 };
+
+// ==========================================================================
+// 公文规范排版工具箱 (Official Document Formatting)
+// ==========================================================================
+
+async function applyDocFormat(formatType) {
+  if (!formatType) return;
+  if (!AppState.isOfficeInitialized) {
+    showToast(`测试模式：已应用【${formatType}】公文格式！`);
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      const paras = selection.paragraphs;
+      paras.load("items");
+      await context.sync();
+
+      if (!paras.items || paras.items.length === 0) {
+        showToast("请先在 Word 文档中划选需要排版的段落！");
+        return;
+      }
+
+      paras.items.forEach((para) => {
+        switch (formatType) {
+          case "doc_title":
+            // 公文大标题：二号（22pt）、方正小标宋简体、居中、行距30磅、无缩进
+            para.font.name = "方正小标宋简体";
+            para.font.size = 22;
+            para.font.bold = false;
+            para.font.color = "#000000";
+            para.font.highlightColor = null;
+            para.alignment = Word.Alignment.centered;
+            para.firstLineIndent = 0;
+            para.lineSpacing = 30;
+            break;
+
+          case "h1":
+            // 一级标题：三号（16pt）、黑体、不加粗、首行缩进2字符（32pt）、行距固定28磅
+            para.font.name = "黑体";
+            para.font.size = 16;
+            para.font.bold = false;
+            para.font.color = "#000000";
+            para.font.highlightColor = null;
+            para.alignment = Word.Alignment.justified;
+            para.firstLineIndent = 32;
+            para.lineSpacing = 28;
+            break;
+
+          case "h2":
+            // 二级标题：三号（16pt）、楷体_GB2312、加粗、首行缩进2字符（32pt）、行距固定28磅
+            para.font.name = "楷体_GB2312";
+            para.font.size = 16;
+            para.font.bold = true;
+            para.font.color = "#000000";
+            para.font.highlightColor = null;
+            para.alignment = Word.Alignment.justified;
+            para.firstLineIndent = 32;
+            para.lineSpacing = 28;
+            break;
+
+          case "h3":
+            // 三级标题：三号（16pt）、仿宋_GB2312、加粗、首行缩进2字符（32pt）、行距固定28磅
+            para.font.name = "仿宋_GB2312";
+            para.font.size = 16;
+            para.font.bold = true;
+            para.font.color = "#000000";
+            para.font.highlightColor = null;
+            para.alignment = Word.Alignment.justified;
+            para.firstLineIndent = 32;
+            para.lineSpacing = 28;
+            break;
+
+          case "body":
+            // 公文正文：三号（16pt）、仿宋_GB2312、不加粗、首行缩进2字符（32pt）、行距固定28磅、两端对齐
+            para.font.name = "仿宋_GB2312";
+            para.font.size = 16;
+            para.font.bold = false;
+            para.font.color = "#000000";
+            para.font.highlightColor = null;
+            para.alignment = Word.Alignment.justified;
+            para.firstLineIndent = 32;
+            para.lineSpacing = 28;
+            break;
+
+          case "clean":
+            // 格式清洗：清除异常高亮底色、重置文字颜色为黑、清除加粗与下划线、两端对齐
+            para.font.highlightColor = null;
+            para.font.color = "#000000";
+            para.font.underline = Word.UnderlineType.none;
+            para.font.strikeThrough = false;
+            para.alignment = Word.Alignment.justified;
+            break;
+        }
+      });
+
+      await context.sync();
+
+      const labelMap = {
+        doc_title: "公文大标题（二号小标宋·居中）",
+        h1: "一级标题（三号黑体·缩进2字）",
+        h2: "二级标题（三号楷体·加粗缩进）",
+        h3: "三级标题（三号仿宋·加粗缩进）",
+        body: "公文正文（三号仿宋·固定28磅）",
+        clean: "格式清洗完成（已清空异常底色与修饰）"
+      };
+      showToast(`已应用：${labelMap[formatType] || formatType}`);
+    });
+  } catch (err) {
+    console.error("公文排版执行失败:", err);
+    showToast("排版应用失败: " + err.message);
+  }
+}
+
+// ==========================================================================
+// 审阅定稿控制台 (Review Session Management)
+// ==========================================================================
+
+function initReviewSession(oldText, newText, isParagraphMode = false) {
+  let items = [];
+
+  if (isParagraphMode) {
+    const oldParas = oldText.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+    const newParas = newText.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+    const maxCount = Math.max(oldParas.length, newParas.length);
+    for (let i = 0; i < maxCount; i++) {
+      items.push({
+        type: "paragraph",
+        oldText: oldParas[i] || "",
+        newText: newParas[i] || "",
+        status: "pending"
+      });
+    }
+  } else {
+    // 逐字/逐句提取修改块
+    const { html } = computeInlineDiffHtml(oldText, newText);
+    const regex = /(<del[^>]*>[\s\S]*?<\/del>)\s*(<ins[^>]*>[\s\S]*?<\/ins>)?|(<ins[^>]*>[\s\S]*?<\/ins>)/gi;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      const full = match[0];
+      const delPart = (full.match(/<del[^>]*>([\s\S]*?)<\/del>/i) || [])[1] || "";
+      const insPart = (full.match(/<ins[^>]*>([\s\S]*?)<\/ins>/i) || [])[1] || "";
+      const cleanDel = delPart.replace(/<[^>]+>/g, "").trim();
+      const cleanIns = insPart.replace(/<[^>]+>/g, "").trim();
+      if (cleanDel || cleanIns) {
+        items.push({
+          type: "inline",
+          oldText: cleanDel,
+          newText: cleanIns,
+          status: "pending"
+        });
+      }
+    }
+    if (items.length === 0) {
+      items = [{
+        type: "inline",
+        oldText: oldText,
+        newText: newText,
+        status: "pending"
+      }];
+    }
+  }
+
+  AppState.reviewSession = {
+    active: true,
+    oldText,
+    newText,
+    isParagraphMode,
+    currentIndex: 0,
+    items
+  };
+
+  renderReviewSessionPanel();
+}
+
+function renderReviewSessionPanel() {
+  const panel = document.getElementById("reviewSessionPanel");
+  if (!panel) return;
+
+  const session = AppState.reviewSession;
+  if (!session || !session.active || !session.items || session.items.length === 0) {
+    panel.style.display = "none";
+    return;
+  }
+
+  panel.style.display = "flex";
+  const countBadge = document.getElementById("reviewCountBadge");
+  const indexEl = document.getElementById("reviewItemIndex");
+  const snippetEl = document.getElementById("reviewItemSnippet");
+
+  const total = session.items.length;
+  const current = session.currentIndex + 1;
+
+  if (countBadge) countBadge.textContent = `共 ${total} 处修改`;
+  if (indexEl) indexEl.textContent = `第 ${current}/${total} 处`;
+
+  const item = session.items[session.currentIndex];
+  if (snippetEl && item) {
+    let snippetHtml = "";
+    if (item.oldText && item.newText) {
+      snippetHtml = `<div><span class="del-preview">原：${escapeHtml(item.oldText)}</span></div><div style="margin-top:2px;"><span class="ins-preview">改：${escapeHtml(item.newText)}</span></div>`;
+    } else if (item.oldText) {
+      snippetHtml = `<div><span class="del-preview">删除：${escapeHtml(item.oldText)}</span></div>`;
+    } else {
+      snippetHtml = `<div><span class="ins-preview">新增：${escapeHtml(item.newText)}</span></div>`;
+    }
+    snippetEl.innerHTML = snippetHtml;
+  }
+}
+
+function reviewPrevItem() {
+  if (AppState.reviewSession && AppState.reviewSession.currentIndex > 0) {
+    AppState.reviewSession.currentIndex--;
+    renderReviewSessionPanel();
+    locateCurrentReviewItemInWord();
+  }
+}
+
+function reviewNextItem() {
+  if (AppState.reviewSession && AppState.reviewSession.currentIndex < AppState.reviewSession.items.length - 1) {
+    AppState.reviewSession.currentIndex++;
+    renderReviewSessionPanel();
+    locateCurrentReviewItemInWord();
+  }
+}
+
+function locateCurrentReviewItemInWord() {
+  const session = AppState.reviewSession;
+  if (!session || !session.items) return;
+  const item = session.items[session.currentIndex];
+  if (!item) return;
+  const target = (item.newText || item.oldText || "").trim();
+  if (target) {
+    window.locateTextInWord(target);
+  }
+}
+
+async function acceptCurrentReviewItem() {
+  const session = AppState.reviewSession;
+  if (!session || !session.items) return;
+  const item = session.items[session.currentIndex];
+  if (!item) return;
+
+  if (!AppState.isOfficeInitialized) {
+    showToast(`测试模式：已采纳第 ${session.currentIndex + 1} 处修改`);
+    item.status = "accepted";
+    advanceReviewSession();
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      // 1. 删除对应原句
+      if (item.oldText) {
+        const queryOld = item.oldText.substring(0, 100);
+        const resOld = context.document.body.search(queryOld, { matchCase: false, ignoreSpace: true });
+        resOld.load("items");
+        await context.sync();
+        if (resOld.items && resOld.items.length > 0) {
+          resOld.items[0].delete();
+        }
+      }
+      // 2. 将对应新句的下划线和颜色恢复正常
+      if (item.newText) {
+        const queryNew = item.newText.substring(0, 100);
+        const resNew = context.document.body.search(queryNew, { matchCase: false, ignoreSpace: true });
+        resNew.load("items");
+        await context.sync();
+        if (resNew.items && resNew.items.length > 0) {
+          resNew.items[0].font.underline = Word.UnderlineType.none;
+          resNew.items[0].font.color = "#000000";
+        }
+      }
+      await context.sync();
+      item.status = "accepted";
+      showToast(`已采纳第 ${session.currentIndex + 1} 处修改`);
+      advanceReviewSession();
+    });
+  } catch (e) {
+    console.warn("采纳单处失败:", e);
+    advanceReviewSession();
+  }
+}
+
+async function rejectCurrentReviewItem() {
+  const session = AppState.reviewSession;
+  if (!session || !session.items) return;
+  const item = session.items[session.currentIndex];
+  if (!item) return;
+
+  if (!AppState.isOfficeInitialized) {
+    showToast(`测试模式：已保留原句，取消第 ${session.currentIndex + 1} 处修改`);
+    item.status = "rejected";
+    advanceReviewSession();
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      // 1. 删除对应新句
+      if (item.newText) {
+        const queryNew = item.newText.substring(0, 100);
+        const resNew = context.document.body.search(queryNew, { matchCase: false, ignoreSpace: true });
+        resNew.load("items");
+        await context.sync();
+        if (resNew.items && resNew.items.length > 0) {
+          resNew.items[0].delete();
+        }
+      }
+      // 2. 将原句删除线和红色清除，恢复为正常黑字
+      if (item.oldText) {
+        const queryOld = item.oldText.substring(0, 100);
+        const resOld = context.document.body.search(queryOld, { matchCase: false, ignoreSpace: true });
+        resOld.load("items");
+        await context.sync();
+        if (resOld.items && resOld.items.length > 0) {
+          resOld.items[0].font.strikeThrough = false;
+          resOld.items[0].font.color = "#000000";
+        }
+      }
+      await context.sync();
+      item.status = "rejected";
+      showToast(`已保留原句，取消第 ${session.currentIndex + 1} 处修改`);
+      advanceReviewSession();
+    });
+  } catch (e) {
+    console.warn("拒绝单处失败:", e);
+    advanceReviewSession();
+  }
+}
+
+function advanceReviewSession() {
+  const session = AppState.reviewSession;
+  if (!session) return;
+  if (session.currentIndex < session.items.length - 1) {
+    session.currentIndex++;
+    renderReviewSessionPanel();
+    locateCurrentReviewItemInWord();
+  } else {
+    showToast("🎉 已复核完全部修改处！");
+    renderReviewSessionPanel();
+  }
+}
+
+async function acceptAllReviews() {
+  const session = AppState.reviewSession;
+  const cleanFinalText = session?.newText || getCurrentActiveOutputText();
+  if (!cleanFinalText) {
+    showToast("无可采纳的内容");
+    return;
+  }
+
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已全部采纳定稿！");
+    closeReviewSession();
+    return;
+  }
+
+  await replaceSelectionWithRichText(cleanFinalText);
+  closeReviewSession();
+  showToast("✅ 全部采纳定稿！已清除所有红线删除标记，正文正式交付");
+}
+
+async function rejectAllReviews() {
+  const session = AppState.reviewSession;
+  const origText = session?.oldText || AppState.currentSelection;
+  if (!origText) {
+    showToast("无可恢复的原文");
+    return;
+  }
+
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已恢复初始原始正文！");
+    closeReviewSession();
+    return;
+  }
+
+  await replaceSelectionWithPlainText(origText);
+  closeReviewSession();
+  showToast("↩️ 已全部撤销！已完整恢复修改前的原始正文");
+}
+
+function closeReviewSession() {
+  if (AppState.reviewSession) {
+    AppState.reviewSession.active = false;
+  }
+  const panel = document.getElementById("reviewSessionPanel");
+  if (panel) panel.style.display = "none";
+}
 
 // ==========================================================================
 // UI 状态与事件绑定
@@ -909,6 +1303,43 @@ function initUIEventListeners() {
       showToast("已成功复制到剪贴板！");
     });
   };
+
+  // 审阅定稿控制台按钮绑定 (微观逐处复核 + 全局一键定稿)
+  const btnRevPrev = document.getElementById("btnReviewPrev");
+  if (btnRevPrev) btnRevPrev.onclick = reviewPrevItem;
+
+  const btnRevNext = document.getElementById("btnReviewNext");
+  if (btnRevNext) btnRevNext.onclick = reviewNextItem;
+
+  const btnAcceptItem = document.getElementById("btnAcceptCurrentItem");
+  if (btnAcceptItem) btnAcceptItem.onclick = acceptCurrentReviewItem;
+
+  const btnRejectItem = document.getElementById("btnRejectCurrentItem");
+  if (btnRejectItem) btnRejectItem.onclick = rejectCurrentReviewItem;
+
+  const btnAcceptAll = document.getElementById("btnAcceptAllReviews");
+  if (btnAcceptAll) btnAcceptAll.onclick = acceptAllReviews;
+
+  const btnRejectAll = document.getElementById("btnRejectAllReviews");
+  if (btnRejectAll) btnRejectAll.onclick = rejectAllReviews;
+
+  // 公文规范排版工具箱按钮与折叠绑定
+  document.querySelectorAll(".format-btn").forEach(btn => {
+    btn.onclick = () => {
+      const fmt = btn.getAttribute("data-format");
+      if (fmt) applyDocFormat(fmt);
+    };
+  });
+
+  const fmtHeader = document.getElementById("formattingHeader");
+  const fmtBody = document.getElementById("formattingBody");
+  const fmtToggleBtn = document.getElementById("formattingToggleBtn");
+  if (fmtHeader && fmtBody) {
+    fmtHeader.onclick = () => {
+      fmtBody.classList.toggle("collapsed");
+      if (fmtToggleBtn) fmtToggleBtn.classList.toggle("collapsed");
+    };
+  }
 
   // 二次微调芯片与追问输入框
   document.querySelectorAll(".refine-chip").forEach(chip => {
