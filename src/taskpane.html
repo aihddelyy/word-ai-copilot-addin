@@ -155,7 +155,8 @@
         <path d="M12 2l1.5 3L16 6.5l-2.5 1.5L12 11l-1.5-3L8 6.5 10.5 5 12 2z" />
       </symbol>
       <symbol id="i-clean" viewBox="0 0 24 24">
-        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        <path
+          d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
       </symbol>
     </defs>
   </svg>
@@ -553,7 +554,9 @@
           <div id="reviewSessionPanel" class="review-session-panel" style="display: none;">
             <div class="review-panel-header">
               <span class="review-panel-title">
-                <svg class="ic" width="13" height="13"><use href="#i-diff" /></svg>
+                <svg class="ic" width="13" height="13">
+                  <use href="#i-diff" />
+                </svg>
                 审阅定稿控制台
               </span>
               <span id="reviewCountBadge" class="badge">共 0 处修改</span>
@@ -563,28 +566,40 @@
             <div class="review-nav-box">
               <div class="review-nav-controls">
                 <button type="button" id="btnReviewPrev" class="btn-subtle" title="在 Word 中定位上一处修改">
-                  <svg class="ic" width="11" height="11"><use href="#i-chevron" /></svg> 上一处
+                  <svg class="ic" width="11" height="11">
+                    <use href="#i-chevron" />
+                  </svg> 上一处
                 </button>
                 <span id="reviewItemIndex" class="review-item-index">第 1/1 处</span>
                 <button type="button" id="btnReviewNext" class="btn-subtle" title="在 Word 中定位下一处修改">
-                  下一处 <svg class="ic" width="11" height="11"><use href="#i-chevron" /></svg>
+                  下一处 <svg class="ic" width="11" height="11">
+                    <use href="#i-chevron" />
+                  </svg>
                 </button>
               </div>
               <div id="reviewItemSnippet" class="review-item-snippet"></div>
               <div class="review-item-actions">
-                <button type="button" id="btnAcceptCurrentItem" class="btn-action-small success" title="采纳此项：保留新修改，消除对应红删除线">采纳本处</button>
-                <button type="button" id="btnRejectCurrentItem" class="btn-action-small danger" title="保留原句：清除对应新增句，恢复原句">保留原句</button>
+                <button type="button" id="btnAcceptCurrentItem" class="btn-action-small success"
+                  title="采纳此项：保留新修改，消除对应红删除线">采纳本处</button>
+                <button type="button" id="btnRejectCurrentItem" class="btn-action-small danger"
+                  title="保留原句：清除对应新增句，恢复原句">保留原句</button>
               </div>
             </div>
 
             <!-- 全局一键定稿与撤销 (选项 A) -->
-            <div class="review-global-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px;">
-              <button type="button" id="btnAcceptAllReviews" class="btn-action success" title="一键全部采纳：清除所有红线删除标记，正文正式交付定稿">
-                <svg class="ic" width="13" height="13"><use href="#i-check" /></svg>
+            <div class="review-global-actions"
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px;">
+              <button type="button" id="btnAcceptAllReviews" class="btn-action success"
+                title="一键全部采纳：清除所有红线删除标记，正文正式交付定稿">
+                <svg class="ic" width="13" height="13">
+                  <use href="#i-check" />
+                </svg>
                 全部采纳定稿
               </button>
               <button type="button" id="btnRejectAllReviews" class="btn-action danger" title="一键全部撤销：剔除所有新增修改，恢复初始原始正文">
-                <svg class="ic" width="13" height="13"><use href="#i-refresh" /></svg>
+                <svg class="ic" width="13" height="13">
+                  <use href="#i-refresh" />
+                </svg>
                 全部撤销恢复
               </button>
             </div>
@@ -595,7 +610,9 @@
             <div class="audit-panel-header">
               <div class="audit-panel-title-group">
                 <span class="audit-panel-title">
-                  <svg class="ic" width="14" height="14"><use href="#i-shield" /></svg>
+                  <svg class="ic" width="14" height="14">
+                    <use href="#i-shield" />
+                  </svg>
                   智能校对体检看板
                 </span>
                 <span id="auditCountBadge" class="badge">已检出 0 处疑点</span>
@@ -605,26 +622,41 @@
 
             <!-- 全局一键黄色高亮与一键自动修复 -->
             <div class="audit-global-actions">
-              <button type="button" id="btnHighlightAllAudit" class="btn-action warning" title="在 Word 原文中将所有检出的错别字和疑点用黄色高亮显眼标注">
-                <svg class="ic" width="13" height="13"><use href="#i-locate" /></svg>
+              <button type="button" id="btnHighlightAllAudit" class="btn-action warning"
+                title="在 Word 原文中将所有检出的错别字和疑点用黄色高亮显眼标注">
+                <svg class="ic" width="13" height="13">
+                  <use href="#i-locate" />
+                </svg>
                 黄色高亮全文疑点
               </button>
-              <button type="button" id="btnAutoFixAllAudit" class="btn-action success" title="一键将 Word 文档中的全部疑点替换为修正建议，并自动清除黄色高亮">
-                <svg class="ic" width="13" height="13"><use href="#i-check" /></svg>
+              <button type="button" id="btnAutoFixAllAudit" class="btn-action success"
+                title="一键将 Word 文档中的全部疑点替换为修正建议，并自动清除黄色高亮">
+                <svg class="ic" width="13" height="13">
+                  <use href="#i-check" />
+                </svg>
                 一键自动修复全部
               </button>
               <button type="button" id="btnClearAuditHighlight" class="btn-action subtle" title="清除 Word 文档中标记的所有黄色高亮">
-                <svg class="ic" width="12" height="12"><use href="#i-clean" /></svg> 清除高亮
+                <svg class="ic" width="12" height="12">
+                  <use href="#i-clean" />
+                </svg> 清除高亮
               </button>
             </div>
 
             <!-- 逐条疑点微观复核卡片 -->
             <div class="audit-items-nav-box">
               <div class="audit-nav-bar">
-                <span class="audit-nav-info">逐项复核 (<span id="auditCurrentIndex">1</span>/<span id="auditTotalCount">1</span>)</span>
+                <span class="audit-nav-info">逐项复核 (<span id="auditCurrentIndex">1</span>/<span
+                    id="auditTotalCount">1</span>)</span>
                 <div class="audit-nav-btns">
-                  <button type="button" id="btnAuditPrev" class="btn-subtle" title="上一处"><svg class="ic" width="10" height="10"><use href="#i-chevron" /></svg> 上一处</button>
-                  <button type="button" id="btnAuditNext" class="btn-subtle" title="下一处">下一处 <svg class="ic" width="10" height="10"><use href="#i-chevron" /></svg></button>
+                  <button type="button" id="btnAuditPrev" class="btn-subtle" title="上一处"><svg class="ic" width="10"
+                      height="10">
+                      <use href="#i-chevron" />
+                    </svg> 上一处</button>
+                  <button type="button" id="btnAuditNext" class="btn-subtle" title="下一处">下一处 <svg class="ic" width="10"
+                      height="10">
+                      <use href="#i-chevron" />
+                    </svg></button>
                 </div>
               </div>
 
@@ -634,10 +666,15 @@
 
               <div class="audit-card-actions">
                 <button type="button" id="btnAuditLocateSingle" class="btn-action-small info" title="在 Word 中定位并选中此段文字">
-                  <svg class="ic" width="11" height="11"><use href="#i-locate" /></svg> 定位原句
+                  <svg class="ic" width="11" height="11">
+                    <use href="#i-locate" />
+                  </svg> 定位原句
                 </button>
-                <button type="button" id="btnAuditFixSingle" class="btn-action-small success" title="采纳本处建议并自动替换 Word 中文字">
-                  <svg class="ic" width="11" height="11"><use href="#i-check" /></svg> 采纳修复
+                <button type="button" id="btnAuditFixSingle" class="btn-action-small success"
+                  title="采纳本处建议并自动替换 Word 中文字">
+                  <svg class="ic" width="11" height="11">
+                    <use href="#i-check" />
+                  </svg> 采纳修复
                 </button>
                 <button type="button" id="btnAuditIgnoreSingle" class="btn-action-small subtle" title="忽略此项">
                   忽略
@@ -648,24 +685,35 @@
 
           <!-- 大纲专属操作条 -->
           <div id="outlineActionBar" class="special-action-bar" style="display: none;">
-            <button type="button" id="btnInsertOutlineSkeleton" class="btn-action primary" title="自动解析分级标题，在当前 Word 文档光标处插入规范的大纲骨架">
-              <svg class="ic" width="13" height="13"><use href="#i-skeleton" /></svg>
+            <button type="button" id="btnInsertOutlineSkeleton" class="btn-action primary"
+              title="自动解析分级标题，在当前 Word 文档光标处插入规范的大纲骨架">
+              <svg class="ic" width="13" height="13">
+                <use href="#i-skeleton" />
+              </svg>
               一键插入 Word 骨架
             </button>
-            <button type="button" id="btnCopyOutlineMarkdown" class="btn-action" title="复制树形大纲文本，可直接粘贴到 XMind / 幕布 / 飞书思维导图中">
-              <svg class="ic" width="13" height="13"><use href="#i-copy" /></svg>
+            <button type="button" id="btnCopyOutlineMarkdown" class="btn-action"
+              title="复制树形大纲文本，可直接粘贴到 XMind / 幕布 / 飞书思维导图中">
+              <svg class="ic" width="13" height="13">
+                <use href="#i-copy" />
+              </svg>
               复制为导图/MD
             </button>
           </div>
 
           <!-- 摘要专属操作条 -->
           <div id="summaryActionBar" class="special-action-bar" style="display: none;">
-            <button type="button" id="btnInsertSummaryFront" class="btn-action primary" title="在当前 Word 文档首部或光标处，规范插入【内容提要】引言段落">
-              <svg class="ic" width="13" height="13"><use href="#i-pin" /></svg>
+            <button type="button" id="btnInsertSummaryFront" class="btn-action primary"
+              title="在当前 Word 文档首部或光标处，规范插入【内容提要】引言段落">
+              <svg class="ic" width="13" height="13">
+                <use href="#i-pin" />
+              </svg>
               一键插入文档提要
             </button>
             <button type="button" id="btnCopySummaryClean" class="btn-action" title="复制摘要纯文本">
-              <svg class="ic" width="13" height="13"><use href="#i-copy" /></svg>
+              <svg class="ic" width="13" height="13">
+                <use href="#i-copy" />
+              </svg>
               复制摘要
             </button>
           </div>
@@ -790,10 +838,14 @@
         <!-- 内部 Tab 切换：金句语料库 vs 标杆文风模仿 -->
         <div class="corpus-tab-bar">
           <button id="tabCorpusQuotes" class="corpus-tab active" type="button">
-            <svg class="ic" width="13" height="13"><use href="#i-bookmark" /></svg> 金句素材库
+            <svg class="ic" width="13" height="13">
+              <use href="#i-bookmark" />
+            </svg> 金句素材库
           </button>
           <button id="tabCorpusStyle" class="corpus-tab" type="button">
-            <svg class="ic" width="13" height="13"><use href="#i-magic" /></svg> 标杆文风模仿
+            <svg class="ic" width="13" height="13">
+              <use href="#i-magic" />
+            </svg> 标杆文风模仿
           </button>
         </div>
 
@@ -816,7 +868,8 @@
             <!-- 添加自定义素材 / 从 Word 选区一键导入 -->
             <div class="add-corpus-box">
               <div class="corpus-input-row">
-                <textarea id="newCorpusTextInput" rows="2" class="form-input" placeholder="输入金句/精美词组，或从 Word 划选一键导入…"></textarea>
+                <textarea id="newCorpusTextInput" rows="2" class="form-input"
+                  placeholder="输入金句/精美词组，或从 Word 划选一键导入…"></textarea>
               </div>
               <div class="corpus-input-actions">
                 <select id="newCorpusCatSelect" class="form-select sm" style="width: auto;">
@@ -826,10 +879,14 @@
                   <option value="custom" selected>我的收藏</option>
                 </select>
                 <button type="button" id="btnAddCorpusFromSelection" class="btn-subtle" title="将 Word 当前划选的文字直接添加进素材库">
-                  <svg class="ic" width="12" height="12"><use href="#i-cursor" /></svg> 导入选中文字
+                  <svg class="ic" width="12" height="12">
+                    <use href="#i-cursor" />
+                  </svg> 导入选中文字
                 </button>
                 <button type="button" id="btnAddCorpusItem" class="btn-secondary sm">
-                  <svg class="ic" width="12" height="12"><use href="#i-plus" /></svg> 添加素材
+                  <svg class="ic" width="12" height="12">
+                    <use href="#i-plus" />
+                  </svg> 添加素材
                 </button>
               </div>
             </div>
@@ -844,16 +901,20 @@
               <div class="style-card-header">
                 <div class="style-title">当前标杆参考范文</div>
                 <button type="button" id="btnLoadSelectionAsStyle" class="btn-subtle" title="读取当前 Word 中划选的高质量文章作为标杆范文">
-                  <svg class="ic" width="12" height="12"><use href="#i-cursor" /></svg> 采纳 Word 选中段落为范文
+                  <svg class="ic" width="12" height="12">
+                    <use href="#i-cursor" />
+                  </svg> 采纳 Word 选中段落为范文
                 </button>
               </div>
               <textarea id="mimicStyleSampleInput" rows="7" class="form-input"
                 placeholder="在此粘贴一段标杆范文（如权威公文讲话稿、顶刊论文或标杆研报）。开启主界面的【文风模仿】开关后，AI 将自动分析并模仿其语言节奏、遣词造句与行文风格…"></textarea>
 
               <div class="style-traits-box" style="margin-top: 10px;">
-                <div class="style-traits-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div class="style-traits-header"
+                  style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                   <span style="font-size: 12px; font-weight: 500; color: var(--text-secondary);">文风特征标签（AI 模仿指引）</span>
-                  <button type="button" id="btnAnalyzeStyleTraits" class="btn-text-action" style="font-size:11.5px; color:var(--brand); cursor:pointer; background:none; border:none; padding: 2px 4px;">
+                  <button type="button" id="btnAnalyzeStyleTraits" class="btn-text-action"
+                    style="font-size:11.5px; color:var(--brand); cursor:pointer; background:none; border:none; padding: 2px 4px;">
                     ✨ 智能提炼文风标签
                   </button>
                 </div>

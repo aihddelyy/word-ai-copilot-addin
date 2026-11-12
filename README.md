@@ -136,6 +136,14 @@ word-ai-copilot-addin/
 
 ---
 
+## 🗺️ 开发文档与路线图
+
+详细的开发计划、功能里程碑设计及后续进阶特性储备请参阅：
+- [开发文档与演进计划 (docs/DEVELOPMENT_PLAN.md)](docs/DEVELOPMENT_PLAN.md)
+- [功能路线图 (ROADMAP.md)](ROADMAP.md)
+
+---
+
 ## 📄 开源许可
 
 本项目遵循 MIT 协议开源。
