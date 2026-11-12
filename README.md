@@ -102,7 +102,9 @@
 
 ```text
 word-ai-copilot-addin/
-├── install.bat            # 统一一键安装启动器（支持 Word / WPS 交互选择）
+├── online-install.ps1     # 🌟 Windows PowerShell 一行命令在线极速安装脚本 (内置 GitHub 镜像加速)
+├── online-install.bat     # Windows 一键在线安装启动器
+├── install.bat            # 统一本地一键安装启动器（支持 Word / WPS 交互选择）
 ├── install.ps1            # 统一智能测速与多宿主注册逻辑脚本
 ├── uninstall.bat          # 统一一键卸载清理启动器（支持 Word / WPS 交互选择）
 ├── uninstall.ps1          # 统一注册表与加载项清理脚本
@@ -124,24 +126,45 @@ word-ai-copilot-addin/
 
 ## 🚀 极速安装与使用
 
-### 步骤 1：克隆或下载项目
-```bash
-git clone https://github.com/aihddelyy/word-ai-copilot-addin.git
+### 方案 A：Windows PowerShell 一键在线安装（推荐，免装 Git，极速直连 ⚡）
+
+无需克隆或下载完整仓库，只需按下键盘上的 `Win + X`（或在开始菜单搜索并打开 **Windows PowerShell**），直接复制并粘贴运行以下命令之一：
+
+**GitHub 镜像加速源（国内直连推荐）：**
+```powershell
+irm https://ghfast.top/https://raw.githubusercontent.com/aihddelyy/word-ai-copilot-addin/main/online-install.ps1 | iex
 ```
 
-### 步骤 2：双击运行 `install.bat`
-双击根目录下的 **`install.bat`**，控制台将提示：
-```text
-请选择要安装的目标办公软件：
-  [1] Microsoft Word (Office 365 / 2021 / 2019 / 2016)
-  [2] WPS 文字 (WPS Office / 个人版 / 专业版 / 信创版)
-  [3] 同时安装到 Word 和 WPS 两者 (推荐)
-  [0] 退出
+**Cloudflare Pages 全球 CDN 加速源（备用）：**
+```powershell
+irm https://word-ai-copilot-addin.pages.dev/online-install.ps1 | iex
 ```
-输入选项（直接按回车默认安装两者），脚本将全自动完成网络测速、动态配置与注册！
 
-### 步骤 3：启动使用
-- **Microsoft Word**：启动 Word，在顶部 **【开始】** 选项卡最右侧即可看到 **【AI 创作助手】** 按钮；
+> **说明**：脚本将自动探测最快的加速节点，高速下载轻量核心配置并弹出软件选择菜单（直接回车默认安装到 Word + WPS），数秒内全自动搞定！
+
+---
+
+### 方案 B：本地下载一键安装
+
+1. 克隆或下载本项目到本地电脑任意文件夹：
+   ```bash
+   git clone https://github.com/aihddelyy/word-ai-copilot-addin.git
+   ```
+2. 双击运行根目录下的 **`install.bat`**。
+3. 按照控制台提示输入选项（直接按回车默认安装到 Word 和 WPS 两者）：
+   ```text
+   请选择要安装的目标办公软件：
+     [1] Microsoft Word (Office 365 / 2021 / 2019 / 2016)
+     [2] WPS 文字 (WPS Office / 个人版 / 专业版 / 信创版)
+     [3] 同时安装到 Word 和 WPS 两者 (推荐)
+     [0] 退出
+   ```
+4. 脚本将全自动完成网络测速、动态配置与注册！
+
+---
+
+### 方案 C：启动与使用
+- **Microsoft Word**：启动 Word，在顶部 **【开始】** 选项卡最右侧即可看到 **【AI 创作助手】** 按钮组；
 - **WPS 文字**：启动 WPS 文字，在顶部功能区会看到新增的专属 **【AI 创作助手】** 选项卡，点击大图标即可唤出侧边栏！
 
 ---
