@@ -93,21 +93,44 @@ const ACTION_PROMPTS = {
 const DOC_ACTION_PROMPTS = {
   doc_outline: {
     name: "提炼结构大纲",
-    prompt: "请分析以下整篇文档，提取并生成清晰的结构化大纲目录。要求使用标准的 Markdown 分级标题（#、##、###）和要点列表，标明每个章节的核心主旨：\n\n"
+    prompt: "请分析以下整篇文档，提取并生成清晰的结构化大纲骨架。要求使用标准的 Markdown 分级标题（# 一级、## 二级、### 三级）和核心要点列表，标明每个章节的核心主旨与小节脉络：\n\n"
   },
   doc_summary: {
     name: "全文要点摘要",
-    prompt: "请对以下整篇文档进行全局分析，输出一份结构化摘要。包括：1. 文档核心背景与主题；2. 核心论点或主要事实；3. 关键结论与行动建议：\n\n"
+    prompt: "请对以下整篇文档进行全局分析，输出一份结构化、规范严谨的【内容提要】与核心摘要。包括：1. 文档核心背景与主题；2. 核心论点或主要事实；3. 关键结论与行动建议：\n\n"
   },
   doc_audit: {
     name: "全面校对审查报告",
-    prompt: "请作为资深文档主编，对整篇文档进行全方位审阅，输出一份专业的【文档审查与修改意见报告】。重点排查：1. 错别字与语病；2. 专业术语前后不统一；3. 论据或逻辑前后矛盾；4. 排版与标点规范性。\n\n【重要格式要求】：在列出具体文字修改建议时，请务必使用直角引号「」标出文档中的原句片段与修改后的句子，严格采用如下格式：\n- 原文：「此处为文档中的原始句子片段」 -> 建议改为：「此处为修改后的句子」（原因说明）\n以便系统自动为用户提供一键定位与替换功能。\n\n待审阅全文如下：\n\n"
+    prompt: "请作为资深文档主编，对整篇文档进行全方位深度审阅体检，输出一份专业的【文档审查与修改意见报告】。排查范围涵盖：错别字、语病语序、标点符号规范、专业/政治术语统一、公文逻辑规范。\n\n【重要格式要求】：在列出具体修改建议时，请务必严格使用如下格式逐条列出，以便系统自动进行黄色高亮与一键自动修复：\n- 原文：「原句片段」 -> 建议改为：「修改后句子」（[问题类别] 原因简述）\n\n问题类别限定在以下之一：[错别字]、[语病修改]、[标点规范]、[术语统一]、[公文规范]。\n\n待审阅全文如下：\n\n"
   },
   doc_table: {
     name: "整理关键数据表格",
     prompt: "请提炼以下文档中的核心数据、指标、对比项或关键信息，整理为一个或多个结构清晰的标准 Markdown 表格（包含表头、对齐线和具体数据）：\n\n"
   }
 };
+
+// 默认内置的精品语料库（涵盖体制公文对仗、学术经典论述、商业汇报精粹）
+const DEFAULT_CORPUS_ITEMS = [
+  // 体制公文对仗
+  { id: "c1", cat: "gov", text: "既要有“想干事”的政治自觉，更要有“干成事”的过硬本领。" },
+  { id: "c2", cat: "gov", text: "在战略上保持定力，在战术上精准发力，在执行上狠抓落实。" },
+  { id: "c3", cat: "gov", text: "坚持问题导向、目标导向、结果导向相统一，以钉钉子精神推动各项任务落地见效。" },
+  { id: "c4", cat: "gov", text: "知责于心、担责于身、履责于行，确保件件有回音、事事有着落。" },
+  { id: "c5", cat: "gov", text: "统筹发展和安全，强化底线思维，下好先手棋，打好主动仗。" },
+  { id: "c6", cat: "gov", text: "以新质生产力赋能高质量发展，推动产业向新而行、向质图强、向高攀升。" },
+
+  // 学术论述经典
+  { id: "c7", cat: "edu", text: "鉴于现有文献主要集中于单一维度的横向探讨，本研究进一步拓宽了动态演进与机理分析框架。" },
+  { id: "c8", cat: "edu", text: "基于上述理论假设与实证检验，本研究得出如下核心结论，并与经典预期形成了互为印证。" },
+  { id: "c9", cat: "edu", text: "尽管本研究在样本选择与场景构建上具有典型代表性，但仍存在一定的局限性，未来研究可在此基础上进一步拓展。" },
+  { id: "c10", cat: "edu", text: "该实证结果不仅丰富了现有微观基础理论，也为相关领域的策略优化提供了强有力的经验证据支持。" },
+
+  // 商业汇报精粹
+  { id: "c11", cat: "biz", text: "聚焦核心业务链路，打造端到端闭环能力，实现效率跃升与价值裂变。" },
+  { id: "c12", cat: "biz", text: "以顶层设计为牵引，以敏捷迭代为支撑，持续沉淀可复用、可迁移的中台能力底座。" },
+  { id: "c13", cat: "biz", text: "找准业务破局点，打通全渠道关键触点，构建具备韧性的差异化竞争壁垒。" },
+  { id: "c14", cat: "biz", text: "强化跨部门协同共振，打破数据孤岛，推动组织效能实现指数级释放。" }
+];
 
 // 默认内置的 Prompt 收藏项（覆盖公文写作、论文规范、总结提炼、降重润色等常用场景）
 const DEFAULT_PROMPT_PRESETS = [
@@ -160,7 +183,22 @@ const AppState = {
   history: [],
   promptPresets: [],
   editingPresetId: null,
-  reviewSession: null
+  reviewSession: null,
+  // 审查校对体检会话
+  auditSession: {
+    items: [],
+    currentIndex: 0
+  },
+  // 标杆文风配置
+  styleMimic: {
+    sample: "",
+    traits: ""
+  },
+  // 专属金句语料库
+  corpus: {
+    items: [],
+    activeCategory: "all"
+  }
 };
 
 // ==========================================================================
@@ -170,6 +208,8 @@ document.addEventListener("DOMContentLoaded", () => {
   loadConfigFromStorage();
   loadHistoryFromStorage();
   loadPromptsFromStorage();
+  loadCorpusFromStorage();
+  loadStyleMimicFromStorage();
   initUIEventListeners();
 
   if (window.Office && window.Office.onReady) {
@@ -1160,6 +1200,777 @@ function closeReviewSession() {
 }
 
 // ==========================================================================
+// 全文智能校对体检与黄色高亮自动修复 (Audit Session Management)
+// ==========================================================================
+
+function parseAuditReport(rawText) {
+  const items = [];
+  if (!rawText) return items;
+
+  // 正则解析：- 原文：「...」 -> 建议改为：「...」（[类别] 原因）
+  const lineRegex = /(?:^|\n)\s*[-*•]?\s*原文\s*[:：]?\s*「([^」]+)」\s*(?:->|—>|=>|建议改为|建议)\s*[:：]?\s*「([^」]+)」(?:\s*[（(](.*?)[)）])?/gi;
+  let match;
+  let id = 1;
+
+  while ((match = lineRegex.exec(rawText)) !== null) {
+    const origin = (match[1] || "").trim();
+    const replacement = (match[2] || "").trim();
+    const fullReason = (match[3] || "").trim();
+
+    let type = "文字优化";
+    let reason = fullReason;
+    const typeMatch = fullReason.match(/[\[【](.*?)[\]】]/);
+    if (typeMatch) {
+      type = typeMatch[1].trim();
+      reason = fullReason.replace(typeMatch[0], "").trim();
+    } else {
+      if (/错别字|错字|别字/i.test(fullReason)) type = "错别字";
+      else if (/标点|标点符号/i.test(fullReason)) type = "标点规范";
+      else if (/语病|语序|成分残缺/i.test(fullReason)) type = "语病修改";
+      else if (/术语|公文/i.test(fullReason)) type = "公文规范";
+    }
+
+    if (origin && replacement && origin !== replacement) {
+      items.push({
+        id: id++,
+        origin,
+        replacement,
+        type,
+        reason: reason || "规范性表述修改",
+        status: "pending"
+      });
+    }
+  }
+
+  // 兜底：如果没匹配到「」格式，尝试匹配表格
+  if (items.length === 0) {
+    const tableRegex = /\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/g;
+    let tm;
+    while ((tm = tableRegex.exec(rawText)) !== null) {
+      const col1 = tm[1].trim();
+      const col2 = tm[2].trim();
+      const col3 = tm[3].trim();
+      const col4 = tm[4].trim();
+      if (col1.includes("原文") || col1.includes("---")) continue;
+      if (col1 && col2 && col1 !== col2 && col1.length < 100) {
+        items.push({
+          id: id++,
+          origin: col1,
+          replacement: col2,
+          type: col3 || "文字校对",
+          reason: col4 || "校对修正",
+          status: "pending"
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+function initAuditSession(rawText) {
+  const panel = document.getElementById("auditSessionPanel");
+  if (!panel) return;
+
+  const items = parseAuditReport(rawText);
+  AppState.auditSession = {
+    items,
+    currentIndex: 0
+  };
+
+  if (items.length === 0) {
+    panel.style.display = "none";
+    return;
+  }
+
+  panel.style.display = "flex";
+  renderAuditPanel();
+}
+
+function renderAuditPanel() {
+  const session = AppState.auditSession;
+  const countBadge = document.getElementById("auditCountBadge");
+  const statsChips = document.getElementById("auditStatsChips");
+  const indexEl = document.getElementById("auditCurrentIndex");
+  const totalEl = document.getElementById("auditTotalCount");
+  const snippetEl = document.getElementById("auditCardSnippet");
+
+  if (!session || !session.items || session.items.length === 0) {
+    const p = document.getElementById("auditSessionPanel");
+    if (p) p.style.display = "none";
+    return;
+  }
+
+  const total = session.items.length;
+  const pendingCount = session.items.filter(i => i.status === "pending").length;
+  if (countBadge) countBadge.textContent = `待复核 ${pendingCount}/${total} 处`;
+
+  if (statsChips) {
+    const typeCountMap = {};
+    session.items.forEach(i => {
+      typeCountMap[i.type] = (typeCountMap[i.type] || 0) + 1;
+    });
+    statsChips.innerHTML = Object.entries(typeCountMap)
+      .map(([t, c]) => `<span class="audit-stat-tag">${escapeHtml(t)}: ${c}</span>`)
+      .join("");
+  }
+
+  if (indexEl) indexEl.textContent = session.currentIndex + 1;
+  if (totalEl) totalEl.textContent = total;
+
+  const cur = session.items[session.currentIndex];
+  if (snippetEl && cur) {
+    let statusTip = "";
+    if (cur.status === "fixed") {
+      statusTip = `<span style="color:#16a34a; font-weight:600; margin-left:6px;">[已修复]</span>`;
+    } else if (cur.status === "ignored") {
+      statusTip = `<span style="color:var(--text-3); margin-left:6px;">[已忽略]</span>`;
+    }
+
+    snippetEl.innerHTML = `
+      <div>
+        <span class="audit-snippet-origin">${escapeHtml(cur.origin)}</span>
+        <span class="audit-snippet-arrow">➔</span>
+        <span class="audit-snippet-suggest">${escapeHtml(cur.replacement)}</span>
+        ${statusTip}
+      </div>
+      <div class="audit-snippet-reason">
+        <strong>[${escapeHtml(cur.type)}]</strong> ${escapeHtml(cur.reason)}
+      </div>
+    `;
+  }
+}
+
+function auditPrevItem() {
+  const session = AppState.auditSession;
+  if (!session || session.items.length === 0) return;
+  if (session.currentIndex > 0) {
+    session.currentIndex--;
+    renderAuditPanel();
+    locateCurrentAuditItem();
+  }
+}
+
+function auditNextItem() {
+  const session = AppState.auditSession;
+  if (!session || session.items.length === 0) return;
+  if (session.currentIndex < session.items.length - 1) {
+    session.currentIndex++;
+    renderAuditPanel();
+    locateCurrentAuditItem();
+  }
+}
+
+async function highlightAllAuditInDoc() {
+  const session = AppState.auditSession;
+  if (!session || !session.items || session.items.length === 0) {
+    showToast("当前无校对疑点数据！");
+    return;
+  }
+
+  if (!AppState.isOfficeInitialized) {
+    showToast(`测试模式：已在 Word 中黄色高亮标记 ${session.items.length} 处疑点！`);
+    return;
+  }
+
+  try {
+    let matchTotal = 0;
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      for (const item of session.items) {
+        if (item.status === "pending") {
+          const results = body.search(item.origin, { matchCase: true, matchWholeWord: false });
+          results.load("items");
+          await context.sync();
+          if (results.items && results.items.length > 0) {
+            results.items.forEach(range => {
+              range.font.highlightColor = "#FFFF00"; // 黄色高亮
+              matchTotal++;
+            });
+          }
+        }
+      }
+      await context.sync();
+    });
+
+    showToast(`🟡 已在 Word 原文中黄色高亮标注 ${matchTotal} 处疑点！`);
+    locateCurrentAuditItem();
+  } catch (err) {
+    console.error("黄色高亮标注失败:", err);
+    showToast("高亮标记失败: " + err.message);
+  }
+}
+
+async function autoFixAllAuditInDoc() {
+  const session = AppState.auditSession;
+  if (!session || !session.items || session.items.length === 0) {
+    showToast("当前无校对疑点数据！");
+    return;
+  }
+
+  if (!AppState.isOfficeInitialized) {
+    session.items.forEach(i => i.status = "fixed");
+    renderAuditPanel();
+    showToast(`测试模式：已一键自动修复全部 ${session.items.length} 处疑点！`);
+    return;
+  }
+
+  try {
+    let fixedTotal = 0;
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      for (const item of session.items) {
+        if (item.status === "pending") {
+          const results = body.search(item.origin, { matchCase: true, matchWholeWord: false });
+          results.load("items");
+          await context.sync();
+          if (results.items && results.items.length > 0) {
+            results.items.forEach(range => {
+              range.insertText(item.replacement, Word.InsertLocation.replace);
+              range.font.highlightColor = null; // 清除黄色高亮
+              fixedTotal++;
+            });
+            item.status = "fixed";
+          }
+        }
+      }
+      await context.sync();
+    });
+
+    renderAuditPanel();
+    showToast(`⚡ 成功自动修复全部 ${fixedTotal} 处文字疑点并清除高亮！`);
+  } catch (err) {
+    console.error("自动修复失败:", err);
+    showToast("自动修复失败: " + err.message);
+  }
+}
+
+async function clearAuditHighlightInDoc() {
+  const session = AppState.auditSession;
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已清除黄色高亮标记！");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      if (session && session.items) {
+        for (const item of session.items) {
+          const textToFind = item.status === "fixed" ? item.replacement : item.origin;
+          const results = body.search(textToFind, { matchCase: true, matchWholeWord: false });
+          results.load("items");
+          await context.sync();
+          results.items.forEach(r => r.font.highlightColor = null);
+        }
+      }
+      await context.sync();
+    });
+    showToast("🧹 已清除 Word 中所有校对黄色高亮标记！");
+  } catch (err) {
+    console.error("清除高亮失败:", err);
+    showToast("清除高亮失败: " + err.message);
+  }
+}
+
+async function locateCurrentAuditItem() {
+  const session = AppState.auditSession;
+  if (!session || !session.items || session.items.length === 0) return;
+  const cur = session.items[session.currentIndex];
+  if (!cur) return;
+
+  if (!AppState.isOfficeInitialized) {
+    showToast(`定位原句：「${cur.origin}」`);
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      const textToSearch = cur.status === "fixed" ? cur.replacement : cur.origin;
+      const results = body.search(textToSearch, { matchCase: true, matchWholeWord: false });
+      results.load("items");
+      await context.sync();
+      if (results.items && results.items.length > 0) {
+        results.items[0].select();
+        await context.sync();
+      } else {
+        showToast("未在文档中匹配到原句（可能已修改或存在格式差异）");
+      }
+    });
+  } catch (e) {
+    console.warn("定位失败:", e);
+  }
+}
+
+async function fixCurrentAuditItem() {
+  const session = AppState.auditSession;
+  if (!session || !session.items || session.items.length === 0) return;
+  const cur = session.items[session.currentIndex];
+  if (!cur || cur.status === "fixed") return;
+
+  if (!AppState.isOfficeInitialized) {
+    cur.status = "fixed";
+    renderAuditPanel();
+    showToast(`测试模式：已修复「${cur.origin}」->「${cur.replacement}」`);
+    auditNextItem();
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      const results = body.search(cur.origin, { matchCase: true, matchWholeWord: false });
+      results.load("items");
+      await context.sync();
+      if (results.items && results.items.length > 0) {
+        results.items.forEach(range => {
+          range.insertText(cur.replacement, Word.InsertLocation.replace);
+          range.font.highlightColor = null;
+        });
+        await context.sync();
+        cur.status = "fixed";
+        showToast(`已采纳修复：第 ${session.currentIndex + 1} 处疑点`);
+      } else {
+        showToast("文档中未找到对应原句");
+      }
+    });
+    renderAuditPanel();
+    auditNextItem();
+  } catch (err) {
+    console.error("采纳单处失败:", err);
+    showToast("采纳失败: " + err.message);
+  }
+}
+
+function ignoreCurrentAuditItem() {
+  const session = AppState.auditSession;
+  if (!session || !session.items || session.items.length === 0) return;
+  const cur = session.items[session.currentIndex];
+  if (!cur) return;
+  cur.status = "ignored";
+  renderAuditPanel();
+  showToast(`已忽略第 ${session.currentIndex + 1} 处修改`);
+  auditNextItem();
+}
+
+// ==========================================================================
+// 长文大纲与提要提炼 (Outline & Summary Handlers)
+// ==========================================================================
+
+function initOutlineSession(outlineText) {
+  const outlineBar = document.getElementById("outlineActionBar");
+  const summaryBar = document.getElementById("summaryActionBar");
+  const auditPanel = document.getElementById("auditSessionPanel");
+  if (auditPanel) auditPanel.style.display = "none";
+  if (summaryBar) summaryBar.style.display = "none";
+  if (outlineBar) outlineBar.style.display = "grid";
+}
+
+function initSummarySession(summaryText) {
+  const outlineBar = document.getElementById("outlineActionBar");
+  const summaryBar = document.getElementById("summaryActionBar");
+  const auditPanel = document.getElementById("auditSessionPanel");
+  if (auditPanel) auditPanel.style.display = "none";
+  if (outlineBar) outlineBar.style.display = "none";
+  if (summaryBar) summaryBar.style.display = "grid";
+}
+
+async function insertOutlineSkeleton() {
+  const outlineText = getCurrentActiveOutputText();
+  if (!outlineText) {
+    showToast("无大纲内容可插入！");
+    return;
+  }
+
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已将结构大纲骨架插入 Word！");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      const lines = outlineText.split(/\r?\n+/).map(l => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (/^#+\s+|^[一二三四五六七八九十]+、|^\([一二三四五六七八九十]+\)|^\d+\./.test(line)) {
+          const para = selection.insertParagraph(line.replace(/^#+\s*/, ""), Word.InsertLocation.after);
+          if (/^#\s+|^[一二三四五六七八九十]+、/.test(line)) {
+            para.font.name = "黑体";
+            para.font.size = 16;
+            para.lineSpacing = 28;
+          } else if (/^##\s+|^\([一二三四五六七八九十]+\)/.test(line)) {
+            para.font.name = "楷体_GB2312";
+            para.font.size = 16;
+            para.font.bold = true;
+            para.lineSpacing = 28;
+          } else {
+            para.font.name = "仿宋_GB2312";
+            para.font.size = 16;
+            para.lineSpacing = 28;
+          }
+        }
+      }
+      await context.sync();
+      showToast("🏗️ 结构大纲骨架已成功插入 Word，并自动应用公文分级样式！");
+    });
+  } catch (err) {
+    console.error("插入大纲骨架失败:", err);
+    showToast("插入失败: " + err.message);
+  }
+}
+
+function copyOutlineMarkdown() {
+  const outlineText = getCurrentActiveOutputText();
+  if (!outlineText) return;
+  navigator.clipboard.writeText(outlineText).then(() => {
+    showToast("📋 已复制树形大纲！可直接在 XMind、幕布、飞书思维导图中按 Ctrl+V 粘贴导入！");
+  });
+}
+
+async function insertSummaryFront() {
+  const summaryText = getCurrentActiveOutputText();
+  if (!summaryText) {
+    showToast("无摘要内容可插入！");
+    return;
+  }
+
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已在文档首部插入【内容提要】！");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const body = context.document.body;
+      const frontRange = body.getRange(Word.RangeLocation.start);
+      const cleanSummary = summaryText.replace(/^[#\s*]+/, "").trim();
+
+      const titlePara = frontRange.insertParagraph("【内容提要】", Word.InsertLocation.before);
+      titlePara.font.name = "黑体";
+      titlePara.font.size = 15;
+      titlePara.font.bold = true;
+      titlePara.lineSpacing = 26;
+
+      const contentPara = titlePara.insertParagraph(cleanSummary, Word.InsertLocation.after);
+      contentPara.font.name = "楷体_GB2312";
+      contentPara.font.size = 15;
+      contentPara.lineSpacing = 26;
+      contentPara.firstLineIndent = 30;
+      contentPara.alignment = Word.Alignment.justified;
+
+      await context.sync();
+      showToast("📌 【内容提要】引言已规范插入到文档开端！");
+    });
+  } catch (err) {
+    console.error("插入提要失败:", err);
+    showToast("插入失败: " + err.message);
+  }
+}
+
+// ==========================================================================
+// 专属金句语料库与标杆文风模仿 (Corpus & Style Mimicry)
+// ==========================================================================
+
+function openCorpusDrawer() {
+  renderCorpusList();
+  renderStyleMimicUI();
+  document.getElementById("corpusDrawer").style.display = "flex";
+}
+
+function closeCorpusDrawer() {
+  document.getElementById("corpusDrawer").style.display = "none";
+}
+
+function switchCorpusTab(tabKey) {
+  const tabQuotes = document.getElementById("tabCorpusQuotes");
+  const tabStyle = document.getElementById("tabCorpusStyle");
+  const panelQuotes = document.getElementById("corpusQuotesPanel");
+  const panelStyle = document.getElementById("corpusStylePanel");
+
+  if (tabKey === "style") {
+    tabQuotes.classList.remove("active");
+    tabStyle.classList.add("active");
+    panelQuotes.style.display = "none";
+    panelStyle.style.display = "flex";
+  } else {
+    tabQuotes.classList.add("active");
+    tabStyle.classList.remove("active");
+    panelQuotes.style.display = "flex";
+    panelStyle.style.display = "none";
+  }
+}
+
+function loadCorpusFromStorage() {
+  try {
+    const saved = localStorage.getItem("word_ai_corpus_items");
+    if (saved) {
+      AppState.corpus.items = JSON.parse(saved);
+    } else {
+      AppState.corpus.items = [...DEFAULT_CORPUS_ITEMS];
+      saveCorpusToStorage();
+    }
+  } catch (e) {
+    AppState.corpus.items = [...DEFAULT_CORPUS_ITEMS];
+  }
+}
+
+function saveCorpusToStorage() {
+  try {
+    localStorage.setItem("word_ai_corpus_items", JSON.stringify(AppState.corpus.items));
+  } catch (e) { }
+}
+
+function loadStyleMimicFromStorage() {
+  try {
+    const saved = localStorage.getItem("word_ai_style_mimic");
+    if (saved) {
+      AppState.styleMimic = JSON.parse(saved);
+    }
+  } catch (e) { }
+}
+
+function saveStyleMimicToStorage() {
+  try {
+    localStorage.setItem("word_ai_style_mimic", JSON.stringify(AppState.styleMimic));
+  } catch (e) { }
+}
+
+function renderStyleMimicUI() {
+  const sampleInput = document.getElementById("mimicStyleSampleInput");
+  const traitsInput = document.getElementById("mimicStyleTraitsInput");
+  if (sampleInput) sampleInput.value = AppState.styleMimic.sample || "";
+  if (traitsInput) traitsInput.value = AppState.styleMimic.traits || "";
+}
+
+function renderCorpusList() {
+  const container = document.getElementById("corpusQuotesList");
+  if (!container) return;
+
+  const activeCat = AppState.corpus.activeCategory || "all";
+  const searchKeyword = (document.getElementById("corpusSearchInput")?.value || "").trim().toLowerCase();
+
+  const filtered = AppState.corpus.items.filter(item => {
+    const matchesCat = (activeCat === "all") || (item.cat === activeCat);
+    const matchesKeyword = !searchKeyword || (item.text && item.text.toLowerCase().includes(searchKeyword));
+    return matchesCat && matchesKeyword;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:20px; font-size:12px; color:var(--text-3);">暂无匹配素材</div>`;
+    return;
+  }
+
+  const catNameMap = {
+    gov: "体制公文对仗",
+    edu: "学术论述经典",
+    biz: "商业汇报精粹",
+    custom: "我的收藏"
+  };
+
+  container.innerHTML = filtered.map(item => `
+    <div class="quote-item-card" data-id="${item.id}">
+      <div class="quote-content">${escapeHtml(item.text)}</div>
+      <div class="quote-meta">
+        <span class="quote-badge">${catNameMap[item.cat] || item.cat}</span>
+        <div class="quote-actions">
+          <button type="button" class="quote-action-btn btn-insert-quote" title="将此金句直接插入 Word 当前光标处">插入</button>
+          <button type="button" class="quote-action-btn btn-quote-to-prompt" title="引用至自定义指令输入框">引用</button>
+          <button type="button" class="quote-action-btn btn-copy-quote" title="复制到剪贴板">复制</button>
+          ${item.cat === "custom" ? `<button type="button" class="quote-action-btn btn-del-quote" title="删除素材" style="color:#ef4444;">删除</button>` : ""}
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  container.querySelectorAll(".btn-insert-quote").forEach(btn => {
+    btn.onclick = (e) => {
+      const card = e.target.closest(".quote-item-card");
+      const id = card.getAttribute("data-id");
+      const item = AppState.corpus.items.find(i => i.id === id);
+      if (item) insertCorpusToWord(item.text);
+    };
+  });
+
+  container.querySelectorAll(".btn-quote-to-prompt").forEach(btn => {
+    btn.onclick = (e) => {
+      const card = e.target.closest(".quote-item-card");
+      const id = card.getAttribute("data-id");
+      const item = AppState.corpus.items.find(i => i.id === id);
+      if (item) {
+        const promptInput = document.getElementById("customPromptInput");
+        if (promptInput) {
+          promptInput.value = (promptInput.value ? promptInput.value + "\n" : "") + `参考金句/论述风格：“${item.text}”\n要求：`;
+          closeCorpusDrawer();
+          promptInput.focus();
+          showToast("已将金句引用到自定义指令框！");
+        }
+      }
+    };
+  });
+
+  container.querySelectorAll(".btn-copy-quote").forEach(btn => {
+    btn.onclick = (e) => {
+      const card = e.target.closest(".quote-item-card");
+      const id = card.getAttribute("data-id");
+      const item = AppState.corpus.items.find(i => i.id === id);
+      if (item) {
+        navigator.clipboard.writeText(item.text).then(() => showToast("已复制到剪贴板！"));
+      }
+    };
+  });
+
+  container.querySelectorAll(".btn-del-quote").forEach(btn => {
+    btn.onclick = (e) => {
+      const card = e.target.closest(".quote-item-card");
+      const id = card.getAttribute("data-id");
+      AppState.corpus.items = AppState.corpus.items.filter(i => i.id !== id);
+      saveCorpusToStorage();
+      renderCorpusList();
+      showToast("已删除该素材");
+    };
+  });
+}
+
+async function insertCorpusToWord(text) {
+  if (!text) return;
+  if (!AppState.isOfficeInitialized) {
+    showToast(`测试模式：已将金句插入 Word：「${text}」`);
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.insertText(text, Word.InsertLocation.replace);
+      await context.sync();
+      showToast("已插入 Word 光标处！");
+    });
+  } catch (err) {
+    showToast("插入失败: " + err.message);
+  }
+}
+
+async function addCorpusFromSelection() {
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：未连接 Word");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.load("text");
+      await context.sync();
+
+      if (!selection.text || selection.text.trim().length === 0) {
+        showToast("请先在 Word 文档中划选需要收藏的好句子！");
+        return;
+      }
+
+      const cleanText = selection.text.trim();
+      const newItem = {
+        id: "c_" + Date.now(),
+        cat: "custom",
+        text: cleanText
+      };
+      AppState.corpus.items.unshift(newItem);
+      saveCorpusToStorage();
+      renderCorpusList();
+      showToast("🎉 已将选中的文字成功加入您的专属素材库！");
+    });
+  } catch (err) {
+    showToast("导入失败: " + err.message);
+  }
+}
+
+function addCorpusItemManual() {
+  const textInput = document.getElementById("newCorpusTextInput");
+  const catSelect = document.getElementById("newCorpusCatSelect");
+  const text = (textInput?.value || "").trim();
+  const cat = catSelect?.value || "custom";
+
+  if (!text) {
+    showToast("请输入素材文本内容！");
+    return;
+  }
+
+  const newItem = {
+    id: "c_" + Date.now(),
+    cat,
+    text
+  };
+  AppState.corpus.items.unshift(newItem);
+  saveCorpusToStorage();
+  textInput.value = "";
+  renderCorpusList();
+  showToast("已添加新素材！");
+}
+
+async function loadSelectionAsStyleSample() {
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：未连接 Word");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.load("text");
+      await context.sync();
+
+      if (!selection.text || selection.text.trim().length === 0) {
+        showToast("请先在 Word 文档中划选一段作为标杆范文的内容！");
+        return;
+      }
+
+      const cleanText = selection.text.trim();
+      const sampleInput = document.getElementById("mimicStyleSampleInput");
+      if (sampleInput) sampleInput.value = cleanText;
+      showToast("已将 Word 选中段落填入标杆范文！");
+    });
+  } catch (err) {
+    showToast("采纳失败: " + err.message);
+  }
+}
+
+function analyzeStyleTraits() {
+  const sample = (document.getElementById("mimicStyleSampleInput")?.value || "").trim();
+  if (!sample) {
+    showToast("请先粘贴或采纳标杆参考范文！");
+    return;
+  }
+
+  const traits = [];
+  if (/[一二三四五六七八九十]、|\([一二三四五六七八九十]\)/.test(sample)) traits.push("层次分明", "规范公文结构");
+  if (/[，,]{3,}/.test(sample) && sample.length > 50) traits.push("长句排比", "对仗工整");
+  if (/政治|大局|落实|部署|要求|推动|深化/.test(sample)) traits.push("站位高远", "语重心长", "干字当头");
+  if (/实证|机理|假设|样本|检验|模型|显著/.test(sample)) traits.push("学术严谨", "客观中立", "论证充分");
+  if (/赋能|闭环|落地|矩阵|壁垒|敏捷/.test(sample)) traits.push("高管汇报", "业务导向", "穿透力强");
+  if (traits.length === 0) traits.push("行文干练", "遣词精当", "逻辑严密");
+
+  const traitsInput = document.getElementById("mimicStyleTraitsInput");
+  if (traitsInput) {
+    traitsInput.value = traits.join("、");
+    showToast("✨ 已智能提炼文风特征标签！");
+  }
+}
+
+function saveStyleConfig() {
+  const sample = (document.getElementById("mimicStyleSampleInput")?.value || "").trim();
+  const traits = (document.getElementById("mimicStyleTraitsInput")?.value || "").trim();
+
+  AppState.styleMimic = { sample, traits };
+  saveStyleMimicToStorage();
+
+  const mimicCheck = document.getElementById("mimicStyleCheck");
+  if (mimicCheck && sample) mimicCheck.checked = true;
+
+  showToast("✅ 已保存标杆文风设置，并在快捷处理中激活【文风模仿】！");
+  closeCorpusDrawer();
+}
+
+// ==========================================================================
 // UI 状态与事件绑定
 // ==========================================================================
 
@@ -1522,6 +2333,93 @@ function initUIEventListeners() {
         const idx = parseInt(tab.getAttribute("data-index"), 10);
         switchDraft(idx);
       }
+    };
+  }
+
+  // 专属金句语料库与标杆文风抽屉
+  const btnOpenCorpus = document.getElementById("btnOpenCorpus");
+  if (btnOpenCorpus) btnOpenCorpus.onclick = openCorpusDrawer;
+  const btnCloseCorpus = document.getElementById("btnCloseCorpus");
+  if (btnCloseCorpus) btnCloseCorpus.onclick = closeCorpusDrawer;
+
+  const tabCorpusQuotes = document.getElementById("tabCorpusQuotes");
+  if (tabCorpusQuotes) tabCorpusQuotes.onclick = () => switchCorpusTab("quotes");
+  const tabCorpusStyle = document.getElementById("tabCorpusStyle");
+  if (tabCorpusStyle) tabCorpusStyle.onclick = () => switchCorpusTab("style");
+
+  // 语料分类切换
+  const categoryChips = document.querySelectorAll("#corpusCategoryChips .category-chip");
+  categoryChips.forEach(chip => {
+    chip.onclick = () => {
+      categoryChips.forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      AppState.corpus.activeCategory = chip.getAttribute("data-cat") || "all";
+      renderCorpusList();
+    };
+  });
+
+  const corpusSearchInput = document.getElementById("corpusSearchInput");
+  if (corpusSearchInput) {
+    corpusSearchInput.oninput = () => renderCorpusList();
+  }
+
+  const btnAddCorpus = document.getElementById("btnAddCorpusItem");
+  if (btnAddCorpus) btnAddCorpus.onclick = addCorpusItemManual;
+
+  const btnAddCorpusSel = document.getElementById("btnAddCorpusFromSelection");
+  if (btnAddCorpusSel) btnAddCorpusSel.onclick = addCorpusFromSelection;
+
+  const btnLoadStyle = document.getElementById("btnLoadSelectionAsStyle");
+  if (btnLoadStyle) btnLoadStyle.onclick = loadSelectionAsStyleSample;
+
+  const btnAnalyzeStyle = document.getElementById("btnAnalyzeStyleTraits");
+  if (btnAnalyzeStyle) btnAnalyzeStyle.onclick = analyzeStyleTraits;
+
+  const btnSaveStyle = document.getElementById("btnSaveStyleConfig");
+  if (btnSaveStyle) btnSaveStyle.onclick = saveStyleConfig;
+
+  // 智能校对体检看板操作绑定
+  const btnHighlightAudit = document.getElementById("btnHighlightAllAudit");
+  if (btnHighlightAudit) btnHighlightAudit.onclick = highlightAllAuditInDoc;
+
+  const btnAutoFixAudit = document.getElementById("btnAutoFixAllAudit");
+  if (btnAutoFixAudit) btnAutoFixAudit.onclick = autoFixAllAuditInDoc;
+
+  const btnClearAuditHigh = document.getElementById("btnClearAuditHighlight");
+  if (btnClearAuditHigh) btnClearAuditHigh.onclick = clearAuditHighlightInDoc;
+
+  const btnAudPrev = document.getElementById("btnAuditPrev");
+  if (btnAudPrev) btnAudPrev.onclick = auditPrevItem;
+
+  const btnAudNext = document.getElementById("btnAuditNext");
+  if (btnAudNext) btnAudNext.onclick = auditNextItem;
+
+  const btnAudLocate = document.getElementById("btnAuditLocateSingle");
+  if (btnAudLocate) btnAudLocate.onclick = locateCurrentAuditItem;
+
+  const btnAudFix = document.getElementById("btnAuditFixSingle");
+  if (btnAudFix) btnAudFix.onclick = fixCurrentAuditItem;
+
+  const btnAudIgnore = document.getElementById("btnAuditIgnoreSingle");
+  if (btnAudIgnore) btnAudIgnore.onclick = ignoreCurrentAuditItem;
+
+  // 大纲操作条绑定
+  const btnInsOutline = document.getElementById("btnInsertOutlineSkeleton");
+  if (btnInsOutline) btnInsOutline.onclick = insertOutlineSkeleton;
+
+  const btnCopyOutline = document.getElementById("btnCopyOutlineMarkdown");
+  if (btnCopyOutline) btnCopyOutline.onclick = copyOutlineMarkdown;
+
+  // 摘要操作条绑定
+  const btnInsSummary = document.getElementById("btnInsertSummaryFront");
+  if (btnInsSummary) btnInsSummary.onclick = insertSummaryFront;
+
+  const btnCopySummary = document.getElementById("btnCopySummaryClean");
+  if (btnCopySummary) {
+    btnCopySummary.onclick = () => {
+      const text = getCurrentActiveOutputText();
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => showToast("已复制摘要到剪贴板！"));
     };
   }
 }
@@ -1967,6 +2865,18 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
     };
     const { fetchUrl, fetchHeaders } = resolveFetchEndpointAndHeaders(rawEndpoint, defaultHeaders);
 
+    let finalSystemPrompt = AppState.config.systemPrompt;
+    const isMimicStyle = document.getElementById("mimicStyleCheck")?.checked;
+    if (isMimicStyle && AppState.styleMimic.sample && AppState.styleMimic.sample.trim().length > 0) {
+      finalSystemPrompt += `\n\n【标杆文风模仿指引】：
+请深度模仿以下标杆范文的行文节奏、句式长短、遣词造句习惯及语气格调（特征参考：${AppState.styleMimic.traits || "严谨精炼、对仗工整、层次分明"}）。
+【标杆范文参考样例】：
+"""
+${AppState.styleMimic.sample.trim()}
+"""
+请务必以该标杆范文相同的文风韵味与格调输出结果。`;
+    }
+
     const response = await fetch(fetchUrl, {
       method: "POST",
       headers: fetchHeaders,
@@ -1974,7 +2884,7 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
       body: JSON.stringify({
         model: AppState.config.model,
         messages: [
-          { role: "system", content: AppState.config.systemPrompt },
+          { role: "system", content: finalSystemPrompt },
           { role: "user", content: userPrompt }
         ],
         temperature: parseFloat(AppState.config.temperature) || 0.7,
@@ -2261,6 +3171,22 @@ function finishGeneration(rawOutput, isMultiDraft, userPrompt) {
   // 若 Diff 面板已展开，自动同步刷新最新对比
   if (document.getElementById("diffContainer")?.style.display !== "none") {
     refreshDiffView();
+  }
+
+  // 智能专属面板自动激活 (校对体检 / 结构大纲 / 核心摘要)
+  if (AppState.lastActionType === "doc_audit") {
+    initAuditSession(cleanText);
+  } else if (AppState.lastActionType === "doc_outline") {
+    initOutlineSession(cleanText);
+  } else if (AppState.lastActionType === "doc_summary") {
+    initSummarySession(cleanText);
+  } else {
+    const auditPanel = document.getElementById("auditSessionPanel");
+    if (auditPanel) auditPanel.style.display = "none";
+    const outlineBar = document.getElementById("outlineActionBar");
+    if (outlineBar) outlineBar.style.display = "none";
+    const summaryBar = document.getElementById("summaryActionBar");
+    if (summaryBar) summaryBar.style.display = "none";
   }
 
   // 记录到历史记录
