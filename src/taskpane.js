@@ -109,12 +109,18 @@ const DOC_ACTION_PROMPTS = {
   }
 };
 
-// 默认内置的 Prompt 收藏项
+// 默认内置的 Prompt 收藏项（覆盖公文写作、论文规范、总结提炼、降重润色等常用场景）
 const DEFAULT_PROMPT_PRESETS = [
-  { id: "p1", title: "整理对比三线表格", content: "请将以下内容提炼整理为标准 Markdown 对比表格，包含清晰的表头与核心指标对比：" },
-  { id: "p2", title: "要点加粗突出", content: "请对以下内容进行提炼总结，并将关键专业术语、核心数据与结论用 **加粗** 重点标注：" },
-  { id: "p3", title: "小红书生动文风", content: "请将以下内容改编为生动活泼的小红书爆款文案风格，语言风趣幽默，适当搭配 emoji 表情与标签：" },
-  { id: "p4", title: "合规与免责声明", content: "请为以下内容补充严谨周密的合规提示与法律免责声明条款：" }
+  { id: "p1", title: "公文结构改写", content: "请将以下内容改写为标准体制内公文汇报材料风格：讲政治、站位高、逻辑严密、层次清晰，标题对仗工整，采用一、（一）1. 的公文分层规范：", showInChips: true },
+  { id: "p2", title: "论文降重与改写", content: "请在严格保留以下学术段落原意和关键技术术语的前提下，进行深度重构降重：调整句式语态（主动与被动互换）、同义替换非关键修饰词、拆分长难句，彻底消除查重痕迹：", showInChips: true },
+  { id: "p3", title: "整理对比三线表", content: "请提炼以下内容的核心指标与对比维度，整理为规范的标准 Markdown 三线对比表格（包含表头、对齐方式及精炼数据）：", showInChips: true },
+  { id: "p4", title: "核心要点加粗", content: "请对以下内容进行逻辑梳理，提炼为清晰的无序要点列表，并将每个要点中的关键专业术语、核心数据、时间节点与结论用 **加粗** 重点标出：", showInChips: true },
+  { id: "p5", title: "消除套话与口语", content: "请对以下内容进行深度精炼，删除文中空洞的套话、废话、口头禅以及冗长的修饰词，使文风紧凑干练、字字珠玑：", showInChips: true },
+  { id: "p6", title: "会议纪要待办化", content: "请将以下零散的会议记录或研讨发言内容整理为规范的【会议纪要与行动清单】，包含：1. 会议核心共识；2. 关键决议事项；3. 具体待办任务（分派角色、事项、截止要求）：", showInChips: false },
+  { id: "p7", title: "领导致辞起草", content: "请根据以下核心主题与要点，起草一篇富有感染力与思想深度的领导讲话致辞，结构包含热情洋溢的开篇、高屋建瓴的形势回顾、求真务实的部署要求与催人奋进的号召结语：", showInChips: false },
+  { id: "p8", title: "SCI 论文学术润色", content: "Please polish the following academic text to meet the high standards of top-tier international journals (e.g., Nature, IEEE). Improve lexical variety, use precise academic terminology, ensure cohesive transitions, and eliminate colloquial expressions:", showInChips: false },
+  { id: "p9", title: "金字塔逻辑汇报", content: "请按照麦肯锡金字塔原理（结论先行、以上统下、归类分组、逻辑递进），将以下散乱内容重构成条理清晰的高管汇报陈述：", showInChips: false },
+  { id: "p10", title: "法律免责与合规条款", content: "请为以下商业或业务说明内容补充严密周全的法律风险提示、合规边界及免责声明条款：", showInChips: false }
 ];
 
 // 全局应用状态
@@ -1834,7 +1840,12 @@ function loadPromptsFromStorage() {
   try {
     const saved = localStorage.getItem("word_ai_copilot_prompts");
     if (saved) {
-      AppState.promptPresets = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // 兼容历史老数据，若缺少 showInChips 默认前 5 个为 true
+      AppState.promptPresets = parsed.map((p, idx) => ({
+        ...p,
+        showInChips: typeof p.showInChips === "boolean" ? p.showInChips : (idx < 5)
+      }));
     } else {
       AppState.promptPresets = DEFAULT_PROMPT_PRESETS;
     }
@@ -1853,11 +1864,14 @@ function savePromptsToStorage() {
 
 function renderPromptChips() {
   const container = document.getElementById("promptChipsList");
-  container.innerHTML = AppState.promptPresets.slice(0, 5).map(p => `
-    <button class="chip" data-text="${escapeHtml(p.content)}">${escapeHtml(p.title)}</button>
+  if (!container) return;
+  // 筛选出勾选了 showInChips 的提示词胶囊
+  const visiblePresets = AppState.promptPresets.filter(p => p.showInChips !== false);
+  container.innerHTML = visiblePresets.map(p => `
+    <button class="chip" data-text="${escapeHtml(p.content)}" title="${escapeHtml(p.content)}">${escapeHtml(p.title)}</button>
   `).join("");
 
-  // 绑定点击
+  // 绑定点击填入指令输入框
   container.querySelectorAll(".chip").forEach(chip => {
     chip.onclick = () => {
       const input = document.getElementById("customPromptInput");
@@ -1878,16 +1892,39 @@ function closePromptsDrawer() {
 
 function renderPromptsDrawerList() {
   const container = document.getElementById("promptsPresetList");
+  if (!container) return;
+
+  if (!AppState.promptPresets || AppState.promptPresets.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:20px; font-size:12px; color:var(--text-3); text-align:center;">暂无收藏提示词</div>`;
+    return;
+  }
+
   container.innerHTML = AppState.promptPresets.map(p => `
     <div class="preset-item" onclick="selectPresetPrompt('${p.id}')">
-      <div>
+      <div class="preset-info">
         <div class="preset-title">${escapeHtml(p.title)}</div>
         <div class="preset-desc">${escapeHtml(p.content)}</div>
       </div>
-      <button class="btn-text danger" onclick="event.stopPropagation(); deletePresetPrompt('${p.id}')">删除</button>
+      <div class="preset-controls" onclick="event.stopPropagation();">
+        <label class="preset-check-label" title="勾选后在自定义指令下方作为快捷胶囊显示">
+          <input type="checkbox" class="preset-chip-toggle" ${p.showInChips !== false ? "checked" : ""} onchange="togglePromptInChips('${p.id}', this.checked)">
+          <span class="preset-check-text">快捷显示</span>
+        </label>
+        <button class="btn-text danger" onclick="deletePresetPrompt('${p.id}')">删除</button>
+      </div>
     </div>
   `).join("");
 }
+
+window.togglePromptInChips = function (id, isChecked) {
+  const target = AppState.promptPresets.find(x => x.id === id);
+  if (target) {
+    target.showInChips = isChecked;
+    savePromptsToStorage();
+    renderPromptChips();
+    showToast(isChecked ? `已设为在快捷指令栏显示` : `已取消在快捷指令栏显示`);
+  }
+};
 
 window.selectPresetPrompt = function (id) {
   const p = AppState.promptPresets.find(x => x.id === id);
@@ -1918,7 +1955,8 @@ function addNewPromptPreset() {
   AppState.promptPresets.push({
     id: Date.now().toString(),
     title,
-    content
+    content,
+    showInChips: true
   });
   savePromptsToStorage();
   renderPromptsDrawerList();
@@ -1963,7 +2001,8 @@ function importPromptsFromFile(e) {
               AppState.promptPresets.push({
                 id: item.id || Date.now().toString() + Math.random().toString(36).substring(2, 5),
                 title: item.title,
-                content: item.content
+                content: item.content,
+                showInChips: typeof item.showInChips === "boolean" ? item.showInChips : true
               });
               count++;
             }
@@ -1971,6 +2010,7 @@ function importPromptsFromFile(e) {
         });
         savePromptsToStorage();
         renderPromptsDrawerList();
+        renderPromptChips();
         showToast(`成功导入 ${count} 条新预设！`);
       } else {
         showToast("导入失败：JSON 格式不符");
