@@ -2107,7 +2107,15 @@ async function cleanUpStreamContentControl() {
       ccs.load("items");
       await context.sync();
       if (ccs.items && ccs.items.length > 0) {
-        ccs.items.forEach(cc => cc.delete(true));
+        ccs.items.forEach(cc => {
+          const afterRange = cc.getRange(Word.RangeLocation.after);
+          cc.delete(true);
+          try {
+            afterRange.select(Word.SelectionMode.end);
+          } catch (e) {
+            afterRange.select();
+          }
+        });
         await context.sync();
       }
     });
@@ -2155,14 +2163,27 @@ async function streamChunkDirectToWord(accumulatedRaw, isFinal = false) {
         const targetCc = ccs.items[0];
         targetCc.insertText(textToInsert, Word.InsertLocation.replace);
         if (isFinal) {
-          // 最终成稿时，解除内容控件包裹，保留纯正文段落
+          // 最终成稿时，获取注入文字段落末尾位置，解除外壳并将光标精准停留在注入文字段后
+          const afterRange = targetCc.getRange(Word.RangeLocation.after);
           targetCc.delete(true);
+          try {
+            afterRange.select(Word.SelectionMode.end);
+          } catch (e) {
+            afterRange.select();
+          }
         }
         await context.sync();
       } else {
         // 2. 回退模式：直接写回当前选区
         const selection = context.document.getSelection();
-        selection.insertText(textToInsert, Word.InsertLocation.replace);
+        const insertedRange = selection.insertText(textToInsert, Word.InsertLocation.replace);
+        if (isFinal) {
+          try {
+            insertedRange.select(Word.SelectionMode.end);
+          } catch (e) {
+            insertedRange.select();
+          }
+        }
         await context.sync();
       }
     });
