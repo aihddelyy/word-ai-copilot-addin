@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:type="TaskPaneApp">
+
+  <!-- 插件唯一标识符 (UUID) -->
+  <Id>d3b07384-d113-4bf8-9ae7-5b6c31e9c8a1</Id>
+
+  <!-- 插件版本 -->
+  <Version>1.0.0.0</Version>
+  <ProviderName>Word AI Copilot Team</ProviderName>
+  <DefaultLocale>zh-CN</DefaultLocale>
+
+  <!-- 插件名称与描述 -->
+  <DisplayName DefaultValue="Word AI 创作助手" />
+  <Description DefaultValue="对 Word 文档中的文字进行润色、扩写、缩写、翻译、语法纠错及自由 AI 交互生成与写回" />
+
+  <!-- 图标与主页配置 (Cloudflare Pages 极速加速线路) -->
+  <IconUrl DefaultValue="https://word-ai-copilot-addin.pages.dev/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://word-ai-copilot-addin.pages.dev/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://github.com/aihddelyy/word-ai-copilot-addin" />
+
+  <!-- 仅在 Word 宿主下运行 -->
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+
+  <!-- 默认网页入口 -->
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://word-ai-copilot-addin.pages.dev/src/taskpane.html" />
+  </DefaultSettings>
+
+  <!-- 权限级别：读写当前文档（用于获取选中文字以及替换/插入生成文字） -->
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <!-- 功能区 Ribbon 菜单扩展 -->
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <!-- 扩展 Word 主页功能区 (TabHome) -->
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="GroupAICopilot">
+                <Label resid="GroupLabel" />
+                <Icon>
+                  <bt:Image size="16" resid="Icon16" />
+                  <bt:Image size="32" resid="Icon32" />
+                  <bt:Image size="80" resid="Icon80" />
+                </Icon>
+
+                <!-- 打开 AI 助手的按钮 -->
+                <Control xsi:type="Button" id="ButtonOpenAICopilot">
+                  <Label resid="ButtonLabel" />
+                  <Supertip>
+                    <Title resid="ButtonTitle" />
+                    <Description resid="ButtonDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16" />
+                    <bt:Image size="32" resid="Icon32" />
+                    <bt:Image size="80" resid="Icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AICopilotTaskpane</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <!-- 资源与本地化字符串映射 -->
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon16" DefaultValue="https://word-ai-copilot-addin.pages.dev/assets/icon-16.png" />
+        <bt:Image id="Icon32" DefaultValue="https://word-ai-copilot-addin.pages.dev/assets/icon-32.png" />
+        <bt:Image id="Icon80" DefaultValue="https://word-ai-copilot-addin.pages.dev/assets/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://word-ai-copilot-addin.pages.dev/src/taskpane.html" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GroupLabel" DefaultValue="AI 智能创作" />
+        <bt:String id="ButtonLabel" DefaultValue="AI 写作助手" />
+        <bt:String id="ButtonTitle" DefaultValue="打开 Word AI 智能创作助手" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="ButtonDesc" DefaultValue="快速调起侧边栏，支持对选中文档文字进行润色、扩写、缩写、中英互译及自由 Prompt 创作" />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+
+</OfficeApp>

@@ -1,15 +1,20 @@
 # Word AI 创作助手 (Word AI Copilot Add-in)
 
 > 基于微软现代官方 **Office Web Add-in** 规范与 **Word.js API** 构建的高性能专业级 AI 创作助手插件。
-> 现已接入 **GitHub Pages 云端公共 HTTPS 托管**，真正做到**开箱即用，无需配置本地证书或启动本地 Python 服务**！
+> 支持 **GitHub Pages 官方线路** 与 **Cloudflare Pages 极速加速线路** 智能双轨容灾，真正做到**开箱即用，无需配置本地证书或启动本地 Python 服务**！
 
 ---
 
 ## ✨ 核心特性
 
-### 1. ⚡ 云端托管，零依赖一键安装
-- 静态页面托管于 GitHub Pages，自带合法有效的权威 SSL 证书。
-- Windows 桌面端 Word 用户**只需双击 `install-to-word.bat`** 即可全自动完成安装注册与缓存清理，开箱即用。
+### 1. ⚡ 双云端托管，智能测速与零依赖一键安装
+- **双线路智能优选**：支持 **GitHub Pages** 与 **Cloudflare Pages (`word-ai-copilot-addin.pages.dev`)** 双线路容灾。
+- **自动故障转移**：运行 `install-to-word.bat` 时，脚本会自动进行 2.5 秒极速测速探测，优先选用 GitHub Pages；若连接不畅或超时，**秒级自动无缝切换至 Cloudflare Pages 全球加速线路**！
+- **支持手动强制指定**：
+  - `install-to-word.bat`：智能测速自动优选（默认）；
+  - `install-to-word.bat cf`：强制选用 Cloudflare Pages 极速加速线路；
+  - `install-to-word.bat gh`：强制选用 GitHub Pages 官方线路。
+- Windows 桌面端 Word 用户**只需双击 `install-to-word.bat`** 即可全自动完成测速、配置、注册与缓存清理。
 
 ### 2. 📚 深度专精的 Word 写作提示词库
 内置 10 种涵盖体制内公文、学术科研、职场汇报等高频核心场景的专用 Prompt：
