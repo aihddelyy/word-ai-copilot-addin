@@ -85,8 +85,6 @@ if (-not (Test-Path $installDir)) {
 
 $filesToDownload = @(
     "manifest.xml",
-    "manifest.cloudflare.xml",
-    "manifest.github.xml",
     "install.bat",
     "install.ps1",
     "uninstall.bat",
