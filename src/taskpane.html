@@ -12,7 +12,7 @@
   <!-- Markdown 解析库 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="taskpane.css?v=20261112_0825">
+  <link rel="stylesheet" href="taskpane.css?v=20261112_0837">
 </head>
 
 <body class="fluent-theme">
@@ -455,22 +455,34 @@
             </button>
           </div>
 
-          <!-- 次操作第 1 排：常用写入方式 (强制 3 列网格，避免挤压重叠) -->
+          <!-- 次操作第 1 排：红绿审阅对照 (逐字内联 / 逐段对照) -->
           <div class="writeback-row sub-row-1"
-            style="display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; width: 100% !important;">
+            style="display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; width: 100% !important;">
             <button id="btnTrackChangesReview" class="btn-action highlight-btn"
-              title="在正文原位生成红绿审阅标记（红删除线+绿底新增），供直接对比审阅">
+              title="在正文原位生成逐字红绿划线标记（红色删除线+绿色新增，无底色）">
               <svg class="ic" width="13" height="13">
                 <use href="#i-diff" />
               </svg>
-              审阅红线
+              审阅红线(逐字)
             </button>
+            <button id="btnParagraphDiffReview" class="btn-action highlight-btn"
+              title="在正文原位逐段对照输出：一段对一段，原段落红色删除线+新段落绿色新增（无底色）">
+              <svg class="ic" width="13" height="13">
+                <use href="#i-diff" />
+              </svg>
+              段落对照(逐段)
+            </button>
+          </div>
+
+          <!-- 次操作第 2 排：常规替换与追加 -->
+          <div class="writeback-row sub-row-2"
+            style="display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; width: 100% !important; margin-top: 6px !important;">
             <button id="btnReplacePlainText" class="btn-action" title="以纯文本方式替换（100% 继承原位置格式）">纯文本替换</button>
             <button id="btnAppendAfter" class="btn-action" title="在选中内容后插入新段落">后方追加</button>
           </div>
 
-          <!-- 次操作第 2 排：辅助与插入模式 (强制 3 列网格，避免挤压重叠) -->
-          <div class="writeback-row sub-row-2"
+          <!-- 次操作第 3 排：辅助与插入模式 (强制 3 列网格) -->
+          <div class="writeback-row sub-row-3"
             style="display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; width: 100% !important; margin-top: 6px !important;">
             <button id="btnInsertAtCursor" class="btn-action" title="在光标位置插入">光标插入</button>
             <button id="btnInsertComment" class="btn-action" title="不修改正文，将生成结果作为 Word 右侧原生批注气泡插入">
@@ -665,7 +677,7 @@
     <div id="toastMessage" class="toast-notification" role="status"></div>
   </div>
 
-  <script src="taskpane.js?v=20261112_0825"></script>
+  <script src="taskpane.js?v=20261112_0837"></script>
 </body>
 
 </html>

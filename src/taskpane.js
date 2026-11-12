@@ -158,7 +158,8 @@ const AppState = {
   },
   // 历史记录与收藏
   history: [],
-  promptPresets: []
+  promptPresets: [],
+  editingPresetId: null
 };
 
 // ==========================================================================
@@ -574,7 +575,7 @@ async function insertAsWordComment(commentText) {
 }
 
 /**
- * 以审阅红线模式插入 Word 正文（红色删除线表示原句，绿色底纹表示 AI 润色新句）
+ * 以审阅红线模式插入 Word 正文（字词级划线：红色删除线表示原句，绿色下划线表示 AI 润色新句，纯划线无底色）
  */
 async function insertAsTrackedChanges(newText) {
   if (!AppState.isOfficeInitialized) {
@@ -600,16 +601,16 @@ async function insertAsTrackedChanges(newText) {
       // 使用精密 LCS 算法计算字词级差异
       const diffResult = computeInlineDiffHtml(oldText, newText);
 
-      // 将 LCS 生成的 del 和 ins 转换为 Word 专用的内联富文本样式
+      // 将 LCS 生成的 del 和 ins 转换为 Word 专用的内联富文本样式（只保留纯划线/下划线，绝不添加背景底色）
       let reviewHtml = diffResult.html
-        .replace(/class="diff-del"/g, 'style="color:#b91c1c; background-color:#fee2e2; text-decoration:line-through; font-family:\'' + fontName + '\'; font-size:' + fontSize + 'pt;"')
-        .replace(/class="diff-ins"/g, 'style="color:#15803d; background-color:#dcfce7; text-decoration:none; font-weight:bold; font-family:\'' + fontName + '\'; font-size:' + fontSize + 'pt;"');
+        .replace(/class="diff-del"/g, 'style="color:#c00000; text-decoration:line-through; font-family:\'' + fontName + '\'; font-size:' + fontSize + 'pt;"')
+        .replace(/class="diff-ins"/g, 'style="color:#008000; text-decoration:underline; font-weight:500; font-family:\'' + fontName + '\'; font-size:' + fontSize + 'pt;"');
 
       // 若没有直接的字词合并（例如全文重写），则输出标准红线块
       if (!diffResult.html.includes("<del") && !diffResult.html.includes("<ins")) {
         reviewHtml = `
-          <del style="color:#b91c1c; background-color:#fee2e2; text-decoration:line-through; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(oldText)}</del>
-          <ins style="color:#15803d; background-color:#dcfce7; text-decoration:none; font-weight:bold; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(newText)}</ins>
+          <del style="color:#c00000; text-decoration:line-through; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(oldText)}</del>
+          <ins style="color:#008000; text-decoration:underline; font-weight:500; font-family:'${fontName}'; font-size:${fontSize}pt;">${escapeHtml(newText)}</ins>
         `;
       }
 
@@ -617,11 +618,72 @@ async function insertAsTrackedChanges(newText) {
       selection.insertHtml(wrapperHtml, Word.InsertLocation.replace);
       await context.sync();
 
-      showToast("已以审阅红线模式插入正文！可在 Word 中直观核对修改");
+      showToast("已以审阅红线(逐字)模式插入正文！可在 Word 中直观核对修改");
     });
   } catch (error) {
     console.error("审阅红线插入失败:", error);
     showToast("审阅插入失败: " + error.message);
+  }
+}
+
+/**
+ * 以逐段对照模式插入 Word 正文（一段对一段：原段落红色删除线，新段落绿色新增，纯划线无底色）
+ */
+async function insertAsParagraphDiff(newText) {
+  if (!AppState.isOfficeInitialized) {
+    showToast("测试模式：已模拟以段落对照模式插入正文！");
+    return;
+  }
+
+  const oldText = AppState.currentSelection;
+  if (!oldText || oldText.trim().length === 0) {
+    showToast("请先在 Word 文档中选中需要对照的原段落");
+    return;
+  }
+
+  try {
+    await Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.load("font/name, font/size");
+      await context.sync();
+
+      const fontName = selection.font.name || "Calibri";
+      const fontSize = selection.font.size || 12;
+
+      // 分割为段落列表
+      const oldParas = oldText.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+      const newParas = newText.split(/\r?\n+/).map(p => p.trim()).filter(Boolean);
+
+      let htmlBlocks = [];
+      const maxCount = Math.max(oldParas.length, newParas.length);
+
+      for (let i = 0; i < maxCount; i++) {
+        if (i < oldParas.length) {
+          htmlBlocks.push(`
+            <p style="color:#c00000; text-decoration:line-through; line-height:1.6; margin:0 0 4pt 0; font-family:'${fontName}'; font-size:${fontSize}pt;">
+              ${escapeHtml(oldParas[i])}
+            </p>
+          `);
+        }
+        if (i < newParas.length) {
+          const formattedPara = escapeHtml(newParas[i]).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+          htmlBlocks.push(`
+            <p style="color:#008000; text-decoration:none; font-weight:normal; line-height:1.6; margin:0 0 10pt 0; font-family:'${fontName}'; font-size:${fontSize}pt;">
+              ${formattedPara}
+            </p>
+          `);
+        }
+      }
+
+      const finalHtml = htmlBlocks.join("");
+      selection.insertHtml(finalHtml, Word.InsertLocation.replace);
+      await context.sync();
+
+      showToast("已以段落对照(逐段)模式插入正文！可在 Word 中逐段核对修改");
+    });
+  } catch (error) {
+    console.error("逐段对照插入失败:", error);
+    showToast("段落对照插入失败: " + error.message);
   }
 }
 
@@ -806,6 +868,14 @@ function initUIEventListeners() {
     btnTrackChanges.onclick = () => {
       const text = getCurrentActiveOutputText();
       if (text) insertAsTrackedChanges(text);
+    };
+  }
+
+  const btnParagraphDiff = document.getElementById("btnParagraphDiffReview");
+  if (btnParagraphDiff) {
+    btnParagraphDiff.onclick = () => {
+      const text = getCurrentActiveOutputText();
+      if (text) insertAsParagraphDiff(text);
     };
   }
 
@@ -1887,6 +1957,7 @@ function openPromptsDrawer() {
 }
 
 function closePromptsDrawer() {
+  AppState.editingPresetId = null;
   document.getElementById("promptsDrawer").style.display = "none";
 }
 
@@ -1899,22 +1970,94 @@ function renderPromptsDrawerList() {
     return;
   }
 
-  container.innerHTML = AppState.promptPresets.map(p => `
-    <div class="preset-item" onclick="selectPresetPrompt('${p.id}')">
-      <div class="preset-info">
-        <div class="preset-title">${escapeHtml(p.title)}</div>
-        <div class="preset-desc">${escapeHtml(p.content)}</div>
+  container.innerHTML = AppState.promptPresets.map(p => {
+    // 处于编辑模式的条目
+    if (AppState.editingPresetId === p.id) {
+      return `
+        <div class="preset-item editing" onclick="event.stopPropagation();">
+          <div class="preset-edit-box">
+            <div class="preset-edit-header">
+              <span class="preset-edit-title-label">编辑提示词</span>
+              <label class="preset-check-label" title="勾选后在自定义指令下方作为快捷胶囊显示">
+                <input type="checkbox" id="editPromptChips_${p.id}" class="preset-chip-toggle" ${p.showInChips !== false ? "checked" : ""}>
+                <span class="preset-check-text">在快捷栏显示</span>
+              </label>
+            </div>
+            <input type="text" id="editPromptTitle_${p.id}" class="form-input" value="${escapeHtml(p.title)}" placeholder="标题，例如：公文改写">
+            <textarea id="editPromptContent_${p.id}" rows="4" class="form-input" placeholder="具体提示词要求…">${escapeHtml(p.content)}</textarea>
+            <div class="preset-edit-actions">
+              <button class="btn-subtle" onclick="cancelEditPreset()">取消</button>
+              <button class="btn-primary" onclick="saveEditPreset('${p.id}')">保存修改</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 默认展示模式
+    return `
+      <div class="preset-item" onclick="selectPresetPrompt('${p.id}')">
+        <div class="preset-info">
+          <div class="preset-title">${escapeHtml(p.title)}</div>
+          <div class="preset-desc">${escapeHtml(p.content)}</div>
+        </div>
+        <div class="preset-controls" onclick="event.stopPropagation();">
+          <label class="preset-check-label" title="勾选后在自定义指令下方作为快捷胶囊显示">
+            <input type="checkbox" class="preset-chip-toggle" ${p.showInChips !== false ? "checked" : ""} onchange="togglePromptInChips('${p.id}', this.checked)">
+            <span class="preset-check-text">快捷显示</span>
+          </label>
+          <button class="btn-text" onclick="startEditPreset('${p.id}')">编辑</button>
+          <button class="btn-text danger" onclick="deletePresetPrompt('${p.id}')">删除</button>
+        </div>
       </div>
-      <div class="preset-controls" onclick="event.stopPropagation();">
-        <label class="preset-check-label" title="勾选后在自定义指令下方作为快捷胶囊显示">
-          <input type="checkbox" class="preset-chip-toggle" ${p.showInChips !== false ? "checked" : ""} onchange="togglePromptInChips('${p.id}', this.checked)">
-          <span class="preset-check-text">快捷显示</span>
-        </label>
-        <button class="btn-text danger" onclick="deletePresetPrompt('${p.id}')">删除</button>
-      </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
+
+window.startEditPreset = function (id) {
+  AppState.editingPresetId = id;
+  renderPromptsDrawerList();
+  setTimeout(() => {
+    const input = document.getElementById(`editPromptTitle_${id}`);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, 50);
+};
+
+window.cancelEditPreset = function () {
+  AppState.editingPresetId = null;
+  renderPromptsDrawerList();
+};
+
+window.saveEditPreset = function (id) {
+  const target = AppState.promptPresets.find(x => x.id === id);
+  if (!target) return;
+  const titleEl = document.getElementById(`editPromptTitle_${id}`);
+  const contentEl = document.getElementById(`editPromptContent_${id}`);
+  const chipEl = document.getElementById(`editPromptChips_${id}`);
+
+  const newTitle = titleEl ? titleEl.value.trim() : "";
+  const newContent = contentEl ? contentEl.value.trim() : "";
+
+  if (!newTitle || !newContent) {
+    showToast("标题和提示词内容均不能为空！");
+    return;
+  }
+
+  target.title = newTitle;
+  target.content = newContent;
+  if (chipEl) {
+    target.showInChips = chipEl.checked;
+  }
+
+  AppState.editingPresetId = null;
+  savePromptsToStorage();
+  renderPromptsDrawerList();
+  renderPromptChips();
+  showToast(`已成功修改「${newTitle}」`);
+};
 
 window.togglePromptInChips = function (id, isChecked) {
   const target = AppState.promptPresets.find(x => x.id === id);
@@ -1935,9 +2078,16 @@ window.selectPresetPrompt = function (id) {
 };
 
 window.deletePresetPrompt = function (id) {
+  const p = AppState.promptPresets.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`确定要删除提示词「${p.title}」吗？`)) return;
+  if (AppState.editingPresetId === id) {
+    AppState.editingPresetId = null;
+  }
   AppState.promptPresets = AppState.promptPresets.filter(x => x.id !== id);
   savePromptsToStorage();
   renderPromptsDrawerList();
+  renderPromptChips();
   showToast("已从收藏库中删除");
 };
 
@@ -1960,6 +2110,7 @@ function addNewPromptPreset() {
   });
   savePromptsToStorage();
   renderPromptsDrawerList();
+  renderPromptChips();
   titleInput.value = "";
   contentInput.value = "";
   showToast("已成功添加到 Prompt 收藏库！");
