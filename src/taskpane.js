@@ -1445,15 +1445,35 @@ async function handleCustomPromptSubmit() {
   }
 
   AppState.lastActionType = "custom";
-  const includeSelection = document.getElementById("includeSelectionCheck").checked;
-  let contextText = AppState.activeMode === "selection" ? AppState.currentSelection : AppState.fullDocText;
-  let finalPrompt = userInstruction;
+  const includeSelection = document.getElementById("includeSelectionCheck")?.checked;
+  const isContextAware = document.getElementById("contextAwareCheck")?.checked;
+  const isMultiDraft = document.getElementById("multiDraftCheck")?.checked;
 
-  if (includeSelection && contextText) {
-    finalPrompt = `参考以下文档内容：\n"""\n${contextText}\n"""\n\n指令要求：\n${userInstruction}`;
+  let contextText = AppState.activeMode === "selection" ? AppState.currentSelection : AppState.fullDocText;
+
+  // 1. 结合“感知上下文”构建前后文背景（若开启感知上下文且抓取到了更宽泛的前后文）
+  let contextBlock = "";
+  if (isContextAware && AppState.surroundingContext && AppState.surroundingContext.length > (contextText ? contextText.length + 10 : 10)) {
+    contextBlock = `\n\n【前后文语境参考（仅供理解行文背景与语境，请勿直接输出此背景段落）】：\n"""\n${AppState.surroundingContext}\n"""`;
   }
 
-  runAIGeneration(finalPrompt, "正在根据指令生成...", false);
+  // 2. 结合“多版本”与“参考选区”构建最终指令 Prompt
+  if (isMultiDraft) {
+    let baseRef = "";
+    if (includeSelection && contextText) {
+      baseRef = `待处理参考文档内容：\n"""\n${contextText}\n"""\n\n`;
+    }
+    const finalPrompt = `请根据以下指令要求执行处理。${contextBlock}\n\n为了方便用户对比挑选，请同时生成 3 种不同风格或视角的独立候选版本，并使用严格的分隔符分隔：\n\n===版本1:标准平衡===\n(版本1内容)\n===版本2:精简干练===\n(版本2内容)\n===版本3:文雅生动===\n(版本3内容)\n\n${baseRef}用户指令要求：\n${userInstruction}`;
+    runAIGeneration(finalPrompt, "正在根据指令生成 3 个候选版本...", true);
+  } else {
+    let finalPrompt = "";
+    if (includeSelection && contextText) {
+      finalPrompt = `待处理参考文档内容：\n"""\n${contextText}\n"""${contextBlock}\n\n用户的具体指令要求：\n${userInstruction}\n\n【严格输出规范】：\n1. 仅输出针对指令要求处理后的单一一版最终正文结果，严禁输出方案一/方案二等多个候选方案；\n2. 严禁包含任何前缀引言、解释说明、提示语（如“修改如下：”、“好的”、“生成结果：”等）或寒暄客套；\n3. 直接输出可直接写回 Word 的纯净最终正文内容。`;
+    } else {
+      finalPrompt = `${userInstruction}${contextBlock}`;
+    }
+    runAIGeneration(finalPrompt, "正在根据指令生成...", false);
+  }
 }
 
 /**
@@ -1541,21 +1561,42 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
     const directDocStreamCheck = document.getElementById("directStreamToDocCheck");
     const isDirectDocStream = directDocStreamCheck && directDocStreamCheck.checked;
 
-    // 若开启直接打字注入，提前抓取并锁定初始选区 Range
-    let targetDocBinding = null;
+    // 若开启直接打字注入，提前抓取并锁定初始写入目标（选中文字后另起一段，或在光标处直接生成，无外框）
     if (isDirectDocStream && AppState.isOfficeInitialized) {
       try {
         await Word.run(async (context) => {
-          const sel = context.document.getSelection();
-          // 用内容控件 ContentControl 或临时标记绑定选区，确保后续连续替换不随光标漂移
-          const cc = sel.insertContentControl();
-          cc.tag = "ai_stream_target";
-          cc.title = "AI 流式生成目标区";
+          // 清理历史可能残留的控件
+          const oldCcs = context.document.contentControls.getByTag("ai_stream_target");
+          oldCcs.load("items");
           await context.sync();
-          targetDocBinding = cc;
+          if (oldCcs.items && oldCcs.items.length > 0) {
+            oldCcs.items.forEach(c => c.delete(true));
+            await context.sync();
+          }
+
+          const sel = context.document.getSelection();
+          sel.load("text");
+          await context.sync();
+
+          let targetRange;
+          if (sel.text && sel.text.trim().length > 0) {
+            // 在选中文字后另起一段直接生成，保留原文字
+            targetRange = sel.insertParagraph("", Word.InsertLocation.after);
+          } else {
+            // 光标处直接生成
+            targetRange = sel;
+          }
+
+          const cc = targetRange.insertContentControl();
+          cc.tag = "ai_stream_target";
+          // 彻底隐藏边框与外观，绝不设置 cc.title，消除“AI 流式生成目标区”外框与标签
+          try {
+            cc.appearance = "Hidden";
+          } catch (e) {}
+          await context.sync();
         });
       } catch (bindErr) {
-        console.warn("选区 ContentControl 绑定失败，回退到 Selection 替换:", bindErr);
+        console.warn("直接注入初始化失败，回退到 Selection 替换:", bindErr);
       }
     }
 
@@ -1618,6 +1659,29 @@ async function runAIGeneration(userPrompt, statusText, isMultiDraft = false) {
     AppState.isGenerating = false;
     stopBtn.style.display = "none";
     resultContent.classList.remove("is-streaming");
+    if (isDirectDocStream && AppState.isOfficeInitialized) {
+      cleanUpStreamContentControl();
+    }
+  }
+}
+
+/**
+ * 清除流式注入临时创建的控件壳，确保正文中决不残留任何多余控件
+ */
+async function cleanUpStreamContentControl() {
+  if (!AppState.isOfficeInitialized) return;
+  try {
+    await Word.run(async (context) => {
+      const ccs = context.document.contentControls.getByTag("ai_stream_target");
+      ccs.load("items");
+      await context.sync();
+      if (ccs.items && ccs.items.length > 0) {
+        ccs.items.forEach(cc => cc.delete(true));
+        await context.sync();
+      }
+    });
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -1636,12 +1700,22 @@ async function streamChunkDirectToWord(accumulatedRaw, isFinal = false) {
     return;
   }
 
+  // 若处于多版本生成模式，直接注文只向 Word 写入版本 1 的正文，避免把分割标记符及后续版本堆进正文
+  if (textToInsert.includes("===版本1")) {
+    const afterV1 = textToInsert.split(/===版本1[^\n]*===/)[1] || "";
+    if (afterV1.includes("===版本2")) {
+      textToInsert = afterV1.split(/===版本2/)[0].trim();
+    } else {
+      textToInsert = afterV1.trim();
+    }
+  }
+
   if (!textToInsert) return;
 
   isStreamingToWordBusy = true;
   try {
     await Word.run(async (context) => {
-      // 1. 若创建了绑定内容控件，则直接替换其内部文本
+      // 1. 若创建了绑定目标区域，则直接替换其内部文本
       const ccs = context.document.contentControls.getByTag("ai_stream_target");
       ccs.load("items");
       await context.sync();
@@ -1650,7 +1724,7 @@ async function streamChunkDirectToWord(accumulatedRaw, isFinal = false) {
         const targetCc = ccs.items[0];
         targetCc.insertText(textToInsert, Word.InsertLocation.replace);
         if (isFinal) {
-          // 最终成稿时，解除内容控件包裹，保留纯正文
+          // 最终成稿时，解除内容控件包裹，保留纯正文段落
           targetCc.delete(true);
         }
         await context.sync();
@@ -1811,6 +1885,7 @@ function stopAIGeneration() {
     AppState.abortController = null;
   }
   AppState.isGenerating = false;
+  cleanUpStreamContentControl();
 }
 
 // ==========================================================================

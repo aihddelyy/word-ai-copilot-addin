@@ -12,7 +12,7 @@
   <!-- Markdown 解析库 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="taskpane.css?v=20261112_0843">
+  <link rel="stylesheet" href="taskpane.css?v=20261112_0856">
 </head>
 
 <body class="fluent-theme">
@@ -273,17 +273,17 @@
         <div class="card-header">
           <span class="card-title">快捷处理</span>
           <div class="header-switches">
-            <label class="switch" title="边思考边直接打字注入 Word 正文（流式直接替换选区）">
+            <label class="switch" title="边思考边直接打字注入 Word 正文（有选区时在后方另起一段，无选区时在光标处直接生成，无外框干扰；快捷动作与自定义指令通用）">
               <input type="checkbox" id="directStreamToDocCheck">
               <span class="switch-track"><span class="switch-thumb"></span></span>
               <span class="switch-label">直接注文</span>
             </label>
-            <label class="switch" title="自动携带选中句子所在的前后段落作为语境参考，让扩写和翻译更贴合上下文">
+            <label class="switch" title="自动携带选中句子所在的前后段落作为语境参考，让改写和自定义创作更贴合上下文（快捷动作与自定义指令通用）">
               <input type="checkbox" id="contextAwareCheck" checked>
               <span class="switch-track"><span class="switch-thumb"></span></span>
               <span class="switch-label">感知上下文</span>
             </label>
-            <label class="switch" title="开启后一次生成 3 种不同风格供挑选">
+            <label class="switch" title="开启后一次生成 3 种不同风格供挑选（快捷动作与自定义指令通用）">
               <input type="checkbox" id="multiDraftCheck">
               <span class="switch-track"><span class="switch-thumb"></span></span>
               <span class="switch-label">多版本</span>
@@ -677,7 +677,7 @@
     <div id="toastMessage" class="toast-notification" role="status"></div>
   </div>
 
-  <script src="taskpane.js?v=20261112_0843"></script>
+  <script src="taskpane.js?v=20261112_0856"></script>
 </body>
 
 </html>
