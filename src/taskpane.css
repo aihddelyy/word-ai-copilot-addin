@@ -66,6 +66,9 @@ body.fluent-theme {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
 }
 
 button { font-family: inherit; color: inherit; }
@@ -89,7 +92,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 *::-webkit-scrollbar-thumb { background: #cfcfcf; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
 *::-webkit-scrollbar-thumb:hover { background-color: #b3b3b3; }
 
-.app-container { display: flex; flex-direction: column; min-height: 100vh; }
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 320px;
+  width: 100%;
+}
 
 /* ==========================================================================
    顶栏
@@ -394,6 +403,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-align: left;
   cursor: pointer;
   transition: border-color var(--t), background var(--t), box-shadow var(--t);
+  min-width: 0;
 }
 .action-btn:hover {
   border-color: var(--brand-tint-30);
@@ -2325,8 +2335,6 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
     width: 100% !important;
     justify-content: flex-end !important;
   }
-  .action-grid { grid-template-columns: 1fr; }
-  .formatting-grid { grid-template-columns: 1fr; }
   .kbd-hint { display: none; }
 }
 
