@@ -1,0 +1,10 @@
+{
+  "name": "WordAICopilot",
+  "version": "1.0.0",
+  "description": "基于大语言模型的 AI 写作与公文排版创作助手（支持润色、扩写、公文对仗、多版本生成及智能审阅）",
+  "homepage_url": "https://github.com/aihddelyy/word-ai-copilot-addin",
+  "ribbon": "ribbon.xml",
+  "addonType": "wps",
+  "multiProcess": false
+}
+

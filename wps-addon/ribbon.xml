@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/01/customui" onLoad="OnWPSWorkTabLoad">
+    <ribbon startFromScratch="false">
+        <tabs>
+            <tab id="word_ai_copilot_tab" label="AI 创作助手">
+                <group id="group_ai_main" label="智能写作">
+                    <button id="btnOpenCopilotPane" 
+                            label="打开创作助手" 
+                            size="large" 
+                            image="icon-32.png" 
+                            onAction="OnAction" 
+                            getVisible="true" 
+                            getEnabled="true"
+                            screentip="Word AI 创作助手"
+                            supertip="基于大语言模型的智能创作助手，支持公文润色、续写、论文降重、金句对仗与智能校对。" />
+                </group>
+                <group id="group_ai_quick" label="快捷动作">
+                    <button id="btnQuickPolish" 
+                            label="润色优化" 
+                            size="normal" 
+                            image="icon-16.png"
+                            onAction="OnAction" 
+                            screentip="润色优化选中文本" />
+                    <button id="btnQuickOfficial" 
+                            label="商务公文" 
+                            size="normal" 
+                            image="icon-16.png"
+                            onAction="OnAction" 
+                            screentip="一键转换为严肃规范公文风格" />
+                    <button id="btnQuickGrammar" 
+                            label="语法纠错" 
+                            size="normal" 
+                            image="icon-16.png"
+                            onAction="OnAction" 
+                            screentip="排查语病与错别字" />
+                </group>
+                <group id="group_ai_tools" label="辅助与设置">
+                    <button id="btnQuickCorpus" 
+                            label="金句素材库" 
+                            size="normal" 
+                            image="icon-16.png"
+                            onAction="OnAction" 
+                            screentip="查看与管理公文对仗素材与文风库" />
+                    <button id="btnQuickSettings" 
+                            label="模型设置" 
+                            size="normal" 
+                            image="icon-16.png"
+                            onAction="OnAction" 
+                            screentip="配置 API Key、Base URL 与大语言模型" />
+                </group>
+            </tab>
+        </tabs>
+    </ribbon>
+</customUI>
+

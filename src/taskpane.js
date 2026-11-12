@@ -202,6 +202,42 @@ const AppState = {
 };
 
 // ==========================================================================
+// 宿主环境桥接（同时支持 Microsoft Word 与 WPS 文字）
+// ==========================================================================
+const HostBridge = {
+  getEnv() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("host") === "wps") return "wps";
+      if (typeof wps !== "undefined" && (wps.WpsApplication || typeof wps.WpsApplication === "function")) {
+        return "wps";
+      }
+      if (window.parent && window.parent.wps && (window.parent.wps.WpsApplication || typeof window.parent.wps.WpsApplication === "function")) {
+        return "wps";
+      }
+    } catch (e) {}
+
+    if (window.Office && (window.Office.context || window.Office.onReady)) {
+      return "office";
+    }
+    return "browser";
+  },
+  isWps() {
+    return this.getEnv() === "wps";
+  },
+  isOffice() {
+    return this.getEnv() === "office";
+  },
+  getWpsApp() {
+    try {
+      if (typeof wps !== "undefined" && wps.WpsApplication) return wps.WpsApplication();
+      if (window.parent && window.parent.wps && window.parent.wps.WpsApplication) return window.parent.wps.WpsApplication();
+    } catch (e) {}
+    return null;
+  }
+};
+
+// ==========================================================================
 // 初始化与生命周期
 // ==========================================================================
 document.addEventListener("DOMContentLoaded", () => {
@@ -212,7 +248,13 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStyleMimicFromStorage();
   initUIEventListeners();
 
-  if (window.Office && window.Office.onReady) {
+  const env = HostBridge.getEnv();
+  if (env === "wps") {
+    AppState.isOfficeInitialized = true;
+    console.log("WPS 文字 (WPS Writer) JSAddin 宿主环境已成功就绪");
+    registerSelectionChangeListener();
+    refreshDocumentSelection();
+  } else if (window.Office && window.Office.onReady) {
     Office.onReady((info) => {
       if (info.host === Office.HostType.Word) {
         AppState.isOfficeInitialized = true;
@@ -226,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   } else {
-    console.warn("未检测到 Office 环境，进入浏览器演示模式");
+    console.warn("未检测到 Office 或 WPS 环境，进入浏览器演示模式");
     initMockData();
   }
 });
@@ -256,8 +298,26 @@ async function registerSelectionChangeListener() {
     }, 280);
   };
 
+  // 1. 若运行于 WPS 文字环境
+  if (HostBridge.isWps()) {
+    try {
+      const wpsApp = HostBridge.getWpsApp();
+      if (wpsApp && wpsApp.ApiEvent && typeof wpsApp.ApiEvent.AddApiEventListener === "function") {
+        wpsApp.ApiEvent.AddApiEventListener("DocumentSelectionChanged", onSelectionEvent);
+        console.log("已成功挂载 WPS DocumentSelectionChanged 事件监听");
+      }
+    } catch (wpsEvtErr) {
+      console.warn("WPS 注册选区事件异常:", wpsEvtErr);
+    }
+    window.addEventListener("focus", () => {
+      refreshDocumentSelection(true);
+    });
+    return;
+  }
+
+  // 2. 运行于 Microsoft Word 环境
   try {
-    // 1. 优先使用 Office.EventType.DocumentSelectionChanged (最稳定、支持各版本 Word)
+    // 优先使用 Office.EventType.DocumentSelectionChanged (最稳定、支持各版本 Word)
     if (window.Office && Office.context && Office.context.document && Office.context.document.addHandlerAsync) {
       Office.context.document.addHandlerAsync(
         Office.EventType.DocumentSelectionChanged,
@@ -270,13 +330,15 @@ async function registerSelectionChangeListener() {
       );
     }
 
-    // 2. 结合 Word.run context.document.onSelectionChanged 双保险
-    await Word.run(async (context) => {
-      if (context.document.onSelectionChanged && typeof context.document.onSelectionChanged.add === "function") {
-        context.document.onSelectionChanged.add(onSelectionEvent);
-        await context.sync();
-      }
-    });
+    // 结合 Word.run context.document.onSelectionChanged 双保险
+    if (window.Word && typeof Word.run === "function") {
+      await Word.run(async (context) => {
+        if (context.document.onSelectionChanged && typeof context.document.onSelectionChanged.add === "function") {
+          context.document.onSelectionChanged.add(onSelectionEvent);
+          await context.sync();
+        }
+      });
+    }
   } catch (error) {
     console.warn("注册选区监听异常:", error);
   }
@@ -287,6 +349,37 @@ async function refreshDocumentSelection(isAutoSync = false) {
     return;
   }
 
+  // 1. 若在 WPS 文字环境
+  if (HostBridge.isWps()) {
+    try {
+      const wpsApp = HostBridge.getWpsApp();
+      if (!wpsApp || !wpsApp.Selection) return;
+      const text = wpsApp.Selection.Text ? wpsApp.Selection.Text.trim() : "";
+
+      if (isAutoSync && text === AppState.currentSelection) {
+        return;
+      }
+
+      AppState.currentSelection = text;
+      try {
+        let ctx = text;
+        const sel = wpsApp.Selection;
+        if (sel.Paragraphs && sel.Paragraphs.Count > 0) {
+          ctx = sel.Range.Paragraphs.Item(1).Range.Text || text;
+        }
+        AppState.surroundingContext = (ctx || text).substring(0, 1200);
+      } catch (e) {
+        AppState.surroundingContext = text;
+      }
+      updateSelectionUI(text);
+      return;
+    } catch (err) {
+      console.warn("WPS 读取选区失败:", err);
+      return;
+    }
+  }
+
+  // 2. 若在 Microsoft Word 环境
   try {
     await Word.run(async (context) => {
       const selection = context.document.getSelection();
@@ -394,6 +487,26 @@ async function readFullDocumentContent() {
     return;
   }
 
+  // 1. 若在 WPS 文字环境
+  if (HostBridge.isWps()) {
+    try {
+      const wpsApp = HostBridge.getWpsApp();
+      if (wpsApp && wpsApp.ActiveDocument) {
+        const text = wpsApp.ActiveDocument.Content.Text ? wpsApp.ActiveDocument.Content.Text.trim() : "";
+        AppState.fullDocText = text;
+        const countEl = document.getElementById("docTotalWords");
+        if (countEl) countEl.textContent = `共 ${text.length} 字`;
+        showToast(`已读取全文（共 ${text.length} 字）`);
+        return;
+      }
+    } catch (e) {
+      console.error("WPS 读取全文失败:", e);
+      showToast("读取全文失败: " + e.message);
+      return;
+    }
+  }
+
+  // 2. 若在 Microsoft Word 环境
   try {
     await Word.run(async (context) => {
       const body = context.document.body;

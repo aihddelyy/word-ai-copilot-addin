@@ -1999,14 +1999,23 @@ textarea.form-input {
   font-weight: 600;
 }
 
-/* 快捷处理卡片双开关与通栏智能续写 */
+/* 快捷处理卡片四开关 (严格 2x2 网格对齐) 与通栏智能续写 */
 .header-switches {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: min-content min-content;
   column-gap: 12px;
   row-gap: 6px;
   align-items: center;
   justify-content: end;
+  justify-items: start;
+}
+
+.header-switches .switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .action-btn.span-full {
