@@ -251,6 +251,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 600;
   color: var(--text);
   letter-spacing: .1px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .card-meta { display: flex; align-items: center; gap: 4px; }
@@ -1433,11 +1435,12 @@ textarea.form-input { resize: vertical; line-height: 1.55; }
 
 /* 快捷处理卡片双开关与通栏智能续写 */
 .header-switches {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  column-gap: 12px;
+  row-gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px 10px;
+  justify-content: end;
 }
 .action-btn.span-full {
   grid-column: 1 / -1;
