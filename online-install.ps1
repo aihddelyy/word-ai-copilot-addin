@@ -42,7 +42,8 @@ function Test-MirrorLatency {
         if ($status -ge 200 -and $status -lt 400) {
             return $sw.ElapsedMilliseconds
         }
-    } catch {
+    }
+    catch {
         return -1
     }
     return -1
@@ -62,7 +63,8 @@ foreach ($m in $mirrorSources) {
             $selectedName = $m.Name
             break
         }
-    } else {
+    }
+    else {
         Write-Host " [超时/跳过]" -ForegroundColor Yellow
     }
 }
@@ -131,20 +133,23 @@ foreach ($file in $filesToDownload) {
     try {
         Download-RemoteFile -Url $remoteUrl -Dest $localFile
         $downloadOk = $true
-    } catch {
+    }
+    catch {
         # 尝试第二备用镜像源
         try {
             $fallbackUrl = "$($mirrorSources[1].BaseUrl)/$file"
             Download-RemoteFile -Url $fallbackUrl -Dest $localFile
             $downloadOk = $true
-        } catch {
+        }
+        catch {
             $downloadOk = $false
         }
     }
 
     if ($downloadOk) {
         Write-Host "  [OK] $file" -ForegroundColor DarkGray
-    } else {
+    }
+    else {
         Write-Host "  [失败] $file" -ForegroundColor Red
     }
 }
@@ -158,7 +163,8 @@ foreach ($sf in $scriptFiles) {
             $rawBytes = [System.IO.File]::ReadAllBytes($fullSf)
             $text = [System.Text.Encoding]::UTF8.GetString($rawBytes)
             [System.IO.File]::WriteAllText($fullSf, $text, [System.Text.Encoding]::UTF8)
-        } catch {}
+        }
+        catch {}
     }
 }
 
@@ -172,10 +178,12 @@ $localInstallPs1 = Join-Path $installDir "install.ps1"
 if (Test-Path $localInstallPs1) {
     if ($App -ne "") {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $localInstallPs1 $App
-    } else {
+    }
+    else {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $localInstallPs1
     }
-} else {
+}
+else {
     Write-Host "[错误] 未找到安装脚本: $localInstallPs1" -ForegroundColor Red
 }
 
